@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24点游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        danger: '#EF4444',
+                        dark: '#1F2937',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        game: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .glass-effect {
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .number-card {
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .number-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            }
+            .number-card.selected {
+                transform: scale(1.1);
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            }
+            .operator-btn {
+                transition: all 0.2s ease;
+            }
+            .operator-btn:hover {
+                transform: scale(1.05);
+            }
+            .operator-btn:active {
+                transform: scale(0.95);
+            }
+            .fade-in {
+                animation: fadeIn 0.5s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .pulse-success {
+                animation: pulseSuccess 0.6s ease-in-out;
+            }
+            @keyframes pulseSuccess {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+            }
+            .auto-calc-indicator {
+                animation: blink 1s infinite;
+            }
+            @keyframes blink {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+            .solution-step {
+                background: linear-gradient(135deg, #10B981/10, #3B82F6/10);
+                border-left: 4px solid #10B981;
+            }
+            .modal-content {
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 font-game">
+    <!-- 背景装饰 -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full opacity-30 blur-3xl"></div>
+        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-green-200 rounded-full opacity-30 blur-3xl"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-yellow-100 rounded-full opacity-20 blur-3xl"></div>
+    </div>
+
+    <!-- 主容器 -->
+    <div class="relative z-10 min-h-screen flex flex-col">
+        <!-- 头部 -->
+        <header class="glass-effect p-4">
+            <div class="max-w-4xl mx-auto">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fa fa-calculator text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold text-dark">24点游戏</h1>
+                            <p class="text-xs text-gray-600">挑战数学思维</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="newGameBtn" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-1 text-sm">
+                            <i class="fa fa-bullseye"></i>
+                            <span>新游戏</span>
+                        </button>
+                        <button id="hintBtn" class="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-1 text-sm">
+                            <i class="fa fa-lightbulb-o"></i>
+                            <span>答案</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 游戏区域 -->
+        <main class="flex-1 p-4">
+            <div class="max-w-4xl mx-auto">
+                <!-- 游戏状态 -->
+                <div class="mb-6">
+                    <div class="glass-effect rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-3">
+                                <div class="text-center">
+                                    <div class="text-lg font-bold text-primary" id="currentStreak">0</div>
+                                    <div class="text-xs text-gray-600">连胜</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-lg font-bold text-secondary" id="totalGames">0</div>
+                                    <div class="text-xs text-gray-600">总局数</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-lg font-bold text-accent" id="winRate">0%</div>
+                                    <div class="text-xs text-gray-600">胜率</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-base font-semibold text-dark">目标: 24</div>
+                                <div class="text-xs text-gray-600">选两个数和运算符自动计算</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 进度条 -->
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="progressBar" class="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-500" style="width: 25%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 数字区域 -->
+                <div class="mb-6">
+                    <h2 class="text-lg font-semibold text-dark mb-3 flex items-center">
+                        <i class="fa fa-cubes mr-2 text-primary"></i>
+                        当前数字
+                    </h2>
+                    <div id="numbersContainer" class="grid grid-cols-2 gap-3">
+                        <!-- 数字卡片将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 操作区域 -->
+                <div class="mb-6">
+                    <h2 class="text-lg font-semibold text-dark mb-3 flex items-center">
+                        <i class="fa fa-plus-circle mr-2 text-secondary"></i>
+                        选择操作
+                    </h2>
+                    <div class="glass-effect rounded-xl p-4">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <button class="operator-btn bg-red-500 hover:bg-red-600 text-white text-xl font-bold py-3 px-4 rounded-lg shadow-lg" data-operator="+">+</button>
+                            <button class="operator-btn bg-blue-500 hover:bg-blue-600 text-white text-xl font-bold py-3 px-4 rounded-lg shadow-lg" data-operator="-">-</button>
+                            <button class="operator-btn bg-green-500 hover:bg-green-600 text-white text-xl font-bold py-3 px-4 rounded-lg shadow-lg" data-operator="×">×</button>
+                            <button class="operator-btn bg-purple-500 hover:bg-purple-600 text-white text-xl font-bold py-3 px-4 rounded-lg shadow-lg" data-operator="÷">÷</button>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button id="undoBtn" class="bg-gray-500 hover:bg-gray-600 text-white text-base font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm" disabled>
+                                <i class="fa fa-undo mr-1"></i>
+                                撤销
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 计算历史 -->
+                <div class="mb-6">
+                    <h2 class="text-lg font-semibold text-dark mb-3 flex items-center">
+                        <i class="fa fa-history mr-2 text-accent"></i>
+                        计算历史
+                    </h2>
+                    <div id="historyContainer" class="glass-effect rounded-xl p-4 max-h-32 overflow-y-auto">
+                        <div class="text-gray-500 text-center py-6">
+                            <i class="fa fa-clock-o text-2xl mb-1"></i>
+                            <p class="text-sm">还没有计算记录</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 胜利弹窗 -->
+        <div id="winModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+            <div class="modal-content rounded-2xl p-6 max-w-xs w-full mx-4 text-center fade-in shadow-2xl">
+                <div class="w-16 h-16 bg-gradient-to-r from-secondary to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 pulse-success">
+                    <i class="fa fa-trophy text-white text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-dark mb-3">恭喜获胜！</h3>
+                <p class="text-gray-700 mb-4 text-sm">你成功计算出了24点！</p>
+                <div class="flex space-x-3">
+                    <button id="playAgainBtn" class="flex-1 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-sm">
+                        再玩一局
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 答案弹窗 -->
+        <div id="answerModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+            <div class="modal-content rounded-2xl p-6 max-w-xs w-full mx-4 fade-in shadow-2xl">
+                <div class="w-12 h-12 bg-gradient-to-r from-accent to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-lightbulb-o text-white text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-dark mb-3 text-center">正确答案</h3>
+                <div id="answerContent" class="text-gray-700 mb-4 text-sm">
+                    <!-- 答案内容将通过JavaScript动态生成 -->
+                </div>
+                <div class="flex space-x-3">
+                    <button id="closeAnswerBtn" class="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-sm">
+                        知道了
+                    </button>
+                    <button id="showCalculationBtn" class="bg-secondary hover:bg-secondary/90 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-sm">
+                        <i class="fa fa-calculator mr-1"></i>
+                        显示计算
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 错误提示弹窗 -->
+        <div id="errorModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+            <div class="modal-content rounded-2xl p-6 max-w-xs w-full mx-4 fade-in shadow-2xl">
+                <div class="w-12 h-12 bg-gradient-to-r from-danger to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-exclamation-triangle text-white text-lg"></i>
+                </div>
+                <h3 class="text-lg font-bold text-dark mb-3 text-center">操作错误</h3>
+                <div id="errorContent" class="text-gray-700 mb-4 text-sm">
+                    <!-- 错误内容将通过JavaScript动态生成 -->
+                </div>
+                <button id="closeErrorBtn" class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-sm">
+                    知道了
+                </button>
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <footer class="glass-effect p-4">
+            <div class="max-w-4xl mx-auto text-center text-gray-600 text-xs">
+                <p>&copy; 2025 24点游戏 - 锻炼数学思维能力 - 8(3)班 梁哲玮</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        class Game24 {
+            constructor() {
+                this.numbers = [];
+                this.originalNumbers = []; // 保存原始数字用于计算答案
+                this.selectedNumbers = [];
+                this.selectedOperator = null;
+                this.history = [];
+                this.gameHistory = [];
+                this.currentStreak = 0;
+                this.totalGames = 0;
+                this.winGames = 0;
+                
+                this.initializeGame();
+                this.bindEvents();
+                this.loadGameStats();
+            }
+
+            // 初始化游戏
+            initializeGame() {
+                this.generateValidNumbers(); // 生成可解的数字组合
+                this.originalNumbers = [...this.numbers]; // 保存原始数字
+                this.renderNumbers();
+                this.updateProgress();
+                this.clearHistory();
+                this.resetSelection();
+            }
+
+            // 生成可解的四个随机数字（确保能计算出24）
+            generateValidNumbers() {
+                this.numbers = [];
+                let attempts = 0;
+                const maxAttempts = 100; // 防止无限循环
+                
+                while (this.numbers.length === 0 && attempts < maxAttempts) {
+                    attempts++;
+                    
+                    // 生成四个随机数字（1-13）
+                    const candidate = [];
+                    for (let i = 0; i < 4; i++) {
+                        candidate.push(Math.floor(Math.random() * 13) + 1);
+                    }
+                    
+                    // 检查这个数字组合是否有解
+                    if (this.hasSolution(candidate)) {
+                        this.numbers = candidate;
+                    }
+                }
+                
+                // 如果超过最大尝试次数，使用一个默认的可解组合
+                if (this.numbers.length === 0) {
+                    this.numbers = [3, 8, 3, 8]; // 经典的可解组合
+                }
+            }
+
+            // 检查数字组合是否有解
+            hasSolution(numbers) {
+                return this.find24Solution(numbers) !== null;
+            }
+
+            // 渲染数字卡片
+            renderNumbers() {
+                const container = document.getElementById('numbersContainer');
+                container.innerHTML = '';
+
+                this.numbers.forEach((num, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'number-card bg-white rounded-xl p-4 text-center shadow-lg hover:shadow-xl cursor-pointer transition-all duration-300 border-2 border-transparent';
+                    card.innerHTML = `
+                        <div class="text-3xl font-bold text-dark mb-1">${num}</div>
+					    <div class="text-xs text-gray-500">❤️</div>
+                    `;
+                    //card.innerHTML = `
+                    //    <div class="text-3xl font-bold text-dark mb-1">${num}</div>
+                    //    <div class="text-xs text-gray-500">数字 ${index + 1}</div>
+                    //`;
+                    card.addEventListener('click', () => this.selectNumber(index));
+                    container.appendChild(card);
+                });
+            }
+
+            // 选择数字
+            selectNumber(index) {
+                if (this.selectedNumbers.includes(index)) {
+                    // 取消选择
+                    this.selectedNumbers = this.selectedNumbers.filter(i => i !== index);
+                } else {
+                    if (this.selectedNumbers.length < 2) {
+                        this.selectedNumbers.push(index);
+                    }
+                }
+
+                this.updateNumberCards();
+                
+                // 如果已经选择了两个数字，并且之前有选择运算符，自动计算
+                if (this.selectedNumbers.length === 2 && this.selectedOperator) {
+                    this.autoCalculate();
+                }
+            }
+
+            // 更新数字卡片状态
+            updateNumberCards() {
+                const cards = document.querySelectorAll('.number-card');
+                cards.forEach((card, index) => {
+                    if (this.selectedNumbers.includes(index)) {
+                        card.classList.add('selected', 'border-primary', 'bg-blue-50');
+                    } else {
+                        card.classList.remove('selected', 'border-primary', 'bg-blue-50');
+                    }
+                });
+            }
+
+            // 绑定事件
+            bindEvents() {
+                // 运算符按钮
+                document.querySelectorAll('.operator-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.selectOperator(e.target.dataset.operator);
+                    });
+                });
+
+                // 撤销按钮
+                document.getElementById('undoBtn').addEventListener('click', () => {
+                    this.undo();
+                });
+
+                // 新游戏按钮
+                document.getElementById('newGameBtn').addEventListener('click', () => {
+                    this.newGame();
+                });
+
+                // 答案按钮
+                document.getElementById('hintBtn').addEventListener('click', () => {
+                    this.showAnswer();
+                });
+
+                // 胜利弹窗按钮
+                document.getElementById('playAgainBtn').addEventListener('click', () => {
+                    this.hideWinModal();
+                    this.newGame();
+                });
+
+                // 答案弹窗按钮
+                document.getElementById('closeAnswerBtn').addEventListener('click', () => {
+                    this.hideAnswerModal();
+                });
+
+                document.getElementById('showCalculationBtn').addEventListener('click', () => {
+                    this.showAnswerCalculation();
+                });
+
+                // 错误弹窗按钮
+                document.getElementById('closeErrorBtn').addEventListener('click', () => {
+                    this.hideErrorModal();
+                });
+            }
+
+            // 选择运算符
+            selectOperator(operator) {
+                this.selectedOperator = operator;
+                
+                // 更新按钮状态
+                document.querySelectorAll('.operator-btn').forEach(btn => {
+                    btn.classList.remove('ring-4', 'ring-white', 'ring-opacity-50');
+                });
+                
+                event.target.classList.add('ring-4', 'ring-white', 'ring-opacity-50');
+                
+                // 如果已经选择了两个数字，自动计算
+                if (this.selectedNumbers.length === 2) {
+                    this.autoCalculate();
+                }
+            }
+
+            // 自动计算
+            autoCalculate() {
+                if (this.selectedNumbers.length !== 2 || !this.selectedOperator) return;
+
+                const [index1, index2] = this.selectedNumbers;
+                const num1 = this.numbers[index1];
+                const num2 = this.numbers[index2];
+
+                let result = 0;
+                let calculation = '';
+
+                try {
+                    switch (this.selectedOperator) {
+                        case '+':
+                            result = num1 + num2;
+                            calculation = `${num1} + ${num2} = ${result}`;
+                            break;
+                        case '-':
+                            if (num1 < num2) {
+                                this.showError('减法结果不能为负数');
+                                this.resetSelection();
+                                return;
+                            }
+                            result = num1 - num2;
+                            calculation = `${num1} - ${num2} = ${result}`;
+                            break;
+                        case '×':
+                            result = num1 * num2;
+                            calculation = `${num1} × ${num2} = ${result}`;
+                            break;
+                        case '÷':
+                            if (num2 === 0) {
+                                this.showError('除数不能为零');
+                                this.resetSelection();
+                                return;
+                            }
+                            if (num1 % num2 !== 0) {
+                                this.showError('除法结果必须为整数');
+                                this.resetSelection();
+                                return;
+                            }
+                            result = num1 / num2;
+                            calculation = `${num1} ÷ ${num2} = ${result}`;
+                            break;
+                    }
+
+                    // 保存当前状态用于撤销
+                    this.history.push({
+                        numbers: [...this.numbers],
+                        selectedNumbers: [...this.selectedNumbers],
+                        selectedOperator: this.selectedOperator
+                    });
+
+                    // 更新数字数组
+                    const newNumbers = this.numbers.filter((_, i) => 
+                        !this.selectedNumbers.includes(i)
+                    );
+                    newNumbers.push(result);
+                    this.numbers = newNumbers;
+
+                    // 添加到计算历史
+                    this.addToHistory(calculation);
+
+                    // 更新界面
+                    this.renderNumbers();
+                    this.resetSelection();
+                    this.updateProgress();
+                    this.updateUndoButton();
+
+                    // 检查是否获胜
+                    if (this.numbers.length === 1 && this.numbers[0] === 24) {
+                        this.winGame();
+                    }
+
+                } catch (error) {
+                    this.showError('计算错误，请重试');
+                    this.resetSelection();
+                }
+            }
+
+            // 添加到计算历史
+            addToHistory(calculation) {
+                const container = document.getElementById('historyContainer');
+                
+                // 如果是第一条记录，清空提示文本
+                if (this.history.length === 0) {
+                    container.innerHTML = '';
+                }
+
+                const historyItem = document.createElement('div');
+                historyItem.className = 'bg-white rounded-lg p-3 mb-2 shadow-sm fade-in';
+                historyItem.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-dark font-medium text-sm">${calculation}</span>
+                        <span class="text-xs text-gray-500">${new Date().toLocaleTimeString()}</span>
+                    </div>
+                `;
+                
+                container.insertBefore(historyItem, container.firstChild);
+            }
+
+            // 重置选择状态
+            resetSelection() {
+                this.selectedNumbers = [];
+                this.selectedOperator = null;
+                this.updateNumberCards();
+                
+                // 重置运算符按钮状态
+                document.querySelectorAll('.operator-btn').forEach(btn => {
+                    btn.classList.remove('ring-4', 'ring-white', 'ring-opacity-50');
+                });
+            }
+
+            // 更新进度条
+            updateProgress() {
+                const progress = ((4 - this.numbers.length) / 3) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+            }
+
+            // 更新撤销按钮状态
+            updateUndoButton() {
+                const btn = document.getElementById('undoBtn');
+                btn.disabled = this.history.length === 0;
+                btn.classList.toggle('opacity-50', this.history.length === 0);
+                btn.classList.toggle('cursor-not-allowed', this.history.length === 0);
+            }
+
+            // 撤销操作
+            undo() {
+                if (this.history.length === 0) return;
+
+                const lastState = this.history.pop();
+                this.numbers = lastState.numbers;
+                
+                // 移除最后一条计算历史
+                const container = document.getElementById('historyContainer');
+                if (container.firstChild) {
+                    container.removeChild(container.firstChild);
+                }
+
+                // 如果没有历史记录了，显示提示文本
+                if (this.history.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-gray-500 text-center py-6">
+                            <i class="fa fa-clock-o text-2xl mb-1"></i>
+                            <p class="text-sm">还没有计算记录</p>
+                        </div>
+                    `;
+                }
+
+                this.renderNumbers();
+                this.resetSelection();
+                this.updateProgress();
+                this.updateUndoButton();
+            }
+
+            // 清空历史记录
+            clearHistory() {
+                const container = document.getElementById('historyContainer');
+                container.innerHTML = `
+                    <div class="text-gray-500 text-center py-6">
+                        <i class="fa fa-clock-o text-2xl mb-1"></i>
+                        <p class="text-sm">还没有计算记录</p>
+                    </div>
+                `;
+                this.history = [];
+                this.updateUndoButton();
+            }
+
+            // 新游戏
+            newGame() {
+                this.initializeGame();
+            }
+
+            // 获胜
+            winGame() {
+                this.currentStreak++;
+                this.totalGames++;
+                this.winGames++;
+                this.gameHistory.push({
+                    numbers: this.history[0]?.numbers || this.numbers,
+                    won: true,
+                    timestamp: new Date()
+                });
+                
+                this.saveGameStats();
+                this.updateStats();
+                this.showWinModal();
+            }
+
+            // 显示胜利弹窗
+            showWinModal() {
+                document.getElementById('winModal').classList.remove('hidden');
+            }
+
+            // 隐藏胜利弹窗
+            hideWinModal() {
+                document.getElementById('winModal').classList.add('hidden');
+            }
+
+            // 显示答案
+            showAnswer() {
+                const solution = this.find24Solution(this.originalNumbers);
+                const answerContent = document.getElementById('answerContent');
+                
+                if (solution) {
+                    answerContent.innerHTML = `
+                        <div class="text-center mb-3">
+                            <div class="text-lg font-bold text-secondary mb-1">${solution.finalExpression}</div>
+                            <div class="text-xs text-gray-600">= 24</div>
+                        </div>
+                        <div class="text-xs text-gray-600 text-center mb-3">
+                            点击"显示计算"查看详细步骤
+                        </div>
+                    `;
+                } else {
+                    // 理论上不会走到这里，因为我们已经确保了所有题目都有解
+                    answerContent.innerHTML = `
+                        <div class="text-center">
+                            <i class="fa fa-times-circle text-danger text-2xl mb-2"></i>
+                            <p class="text-base font-medium text-danger">抱歉，这组数字无法计算出24</p>
+                            <p class="text-xs text-gray-600 mt-1">建议点击"新游戏"尝试其他数字</p>
+                        </div>
+                    `;
+                    // 隐藏显示计算按钮
+                    document.getElementById('showCalculationBtn').style.display = 'none';
+                }
+                
+                document.getElementById('answerModal').classList.remove('hidden');
+            }
+
+            // 显示答案计算步骤
+            showAnswerCalculation() {
+                const solution = this.find24Solution(this.originalNumbers);
+                const answerContent = document.getElementById('answerContent');
+                
+                if (solution && solution.steps) {
+                    let stepsHtml = `
+                        <div class="text-center mb-3">
+                            <div class="text-lg font-bold text-secondary mb-1">${solution.finalExpression}</div>
+                            <div class="text-xs text-gray-600">= 24</div>
+                        </div>
+                        <div class="space-y-2">
+                    `;
+                    
+                    solution.steps.forEach((step, index) => {
+                        stepsHtml += `
+                            <div class="solution-step p-3 rounded-lg">
+                                <div class="font-semibold text-dark text-sm">步骤 ${index + 1}:</div>
+                                <div class="text-base text-secondary font-medium mt-1">${step.expression}</div>
+                                <div class="text-xs text-gray-700 mt-1">${step.description}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    stepsHtml += `</div>`;
+                    answerContent.innerHTML = stepsHtml;
+                }
+                
+                // 隐藏显示计算按钮
+                document.getElementById('showCalculationBtn').style.display = 'none';
+            }
+
+            // 隐藏答案弹窗
+            hideAnswerModal() {
+                document.getElementById('answerModal').classList.add('hidden');
+                // 恢复显示计算按钮
+                document.getElementById('showCalculationBtn').style.display = 'inline-flex';
+            }
+
+            // 显示错误提示
+            showError(message) {
+                document.getElementById('errorContent').textContent = message;
+                document.getElementById('errorModal').classList.remove('hidden');
+            }
+
+            // 隐藏错误提示
+            hideErrorModal() {
+                document.getElementById('errorModal').classList.add('hidden');
+            }
+
+            // 更新统计信息
+            updateStats() {
+                document.getElementById('currentStreak').textContent = this.currentStreak;
+                document.getElementById('totalGames').textContent = this.totalGames;
+                
+                const winRate = this.totalGames > 0 ? 
+                    Math.round((this.winGames / this.totalGames) * 100) : 0;
+                document.getElementById('winRate').textContent = `${winRate}%`;
+            }
+
+            // 保存游戏统计
+            saveGameStats() {
+                const stats = {
+                    currentStreak: this.currentStreak,
+                    totalGames: this.totalGames,
+                    winGames: this.winGames,
+                    gameHistory: this.gameHistory
+                };
+                localStorage.setItem('game24Stats', JSON.stringify(stats));
+            }
+
+            // 加载游戏统计
+            loadGameStats() {
+                const saved = localStorage.getItem('game24Stats');
+                if (saved) {
+                    const stats = JSON.parse(saved);
+                    this.currentStreak = stats.currentStreak || 0;
+                    this.totalGames = stats.totalGames || 0;
+                    this.winGames = stats.winGames || 0;
+                    this.gameHistory = stats.gameHistory || [];
+                    this.updateStats();
+                }
+            }
+
+            // 显示消息
+            showMessage(message) {
+                alert(message);
+            }
+
+            // 计算24点答案的核心算法
+            find24Solution(numbers) {
+                // 创建所有可能的数字排列
+                const permutations = this.getPermutations(numbers);
+                
+                // 定义运算符
+                const operators = ['+', '-', '×', '÷'];
+                
+                // 尝试所有可能的组合
+                for (const nums of permutations) {
+                    for (const op1 of operators) {
+                        for (const op2 of operators) {
+                            for (const op3 of operators) {
+                                // 情况1: ((a op1 b) op2 c) op3 d
+                                const result1 = this.calculate(nums[0], nums[1], op1);
+                                if (result1 === null) continue;
+                                
+                                const result2 = this.calculate(result1, nums[2], op2);
+                                if (result2 === null) continue;
+                                
+                                const finalResult1 = this.calculate(result2, nums[3], op3);
+                                if (finalResult1 === 24) {
+                                    return {
+                                        finalExpression: `((${nums[0]} ${op1} ${nums[1]}) ${op2} ${nums[2]}) ${op3} ${nums[3]}`,
+                                        steps: [
+                                            { expression: `${nums[0]} ${op1} ${nums[1]} = ${result1}`, description: `第一步：计算 ${nums[0]} ${op1} ${nums[1]}` },
+                                            { expression: `${result1} ${op2} ${nums[2]} = ${result2}`, description: `第二步：用上一步结果 ${result1} ${op2} ${nums[2]}` },
+                                            { expression: `${result2} ${op3} ${nums[3]} = 24`, description: `第三步：用上一步结果 ${result2} ${op3} ${nums[3]}，得到24` }
+                                        ]
+                                    };
+                                }
+                                
+                                // 情况2: (a op1 (b op2 c)) op3 d
+                                const result3 = this.calculate(nums[1], nums[2], op2);
+                                if (result3 === null) continue;
+                                
+                                const result4 = this.calculate(nums[0], result3, op1);
+                                if (result4 === null) continue;
+                                
+                                const finalResult2 = this.calculate(result4, nums[3], op3);
+                                if (finalResult2 === 24) {
+                                    return {
+                                        finalExpression: `(${nums[0]} ${op1} (${nums[1]} ${op2} ${nums[2]})) ${op3} ${nums[3]}`,
+                                        steps: [
+                                            { expression: `${nums[1]} ${op2} ${nums[2]} = ${result3}`, description: `第一步：先计算括号内 ${nums[1]} ${op2} ${nums[2]}` },
+                                            { expression: `${nums[0]} ${op1} ${result3} = ${result4}`, description: `第二步：计算 ${nums[0]} ${op1} 上一步结果 ${result3}` },
+                                            { expression: `${result4} ${op3} ${nums[3]} = 24`, description: `第三步：用上一步结果 ${result4} ${op3} ${nums[3]}，得到24` }
+                                        ]
+                                    };
+                                }
+                                
+                                // 情况3: a op1 ((b op2 c) op3 d)
+                                const result5 = this.calculate(nums[1], nums[2], op2);
+                                if (result5 === null) continue;
+                                
+                                const result6 = this.calculate(result5, nums[3], op3);
+                                if (result6 === null) continue;
+                                
+                                const finalResult3 = this.calculate(nums[0], result6, op1);
+                                if (finalResult3 === 24) {
+                                    return {
+                                        finalExpression: `${nums[0]} ${op1} ((${nums[1]} ${op2} ${nums[2]}) ${op3} ${nums[3]})`,
+                                        steps: [
+                                            { expression: `${nums[1]} ${op2} ${nums[2]} = ${result5}`, description: `第一步：先计算 ${nums[1]} ${op2} ${nums[2]}` },
+                                            { expression: `${result5} ${op3} ${nums[3]} = ${result6}`, description: `第二步：用上一步结果 ${result5} ${op3} ${nums[3]}` },
+                                            { expression: `${nums[0]} ${op1} ${result6} = 24`, description: `第三步：计算 ${nums[0]} ${op1} 上一步结果 ${result6}，得到24` }
+                                        ]
+                                    };
+                                }
+                                
+                                // 情况4: a op1 (b op2 (c op3 d))
+                                const result7 = this.calculate(nums[2], nums[3], op3);
+                                if (result7 === null) continue;
+                                
+                                const result8 = this.calculate(nums[1], result7, op2);
+                                if (result8 === null) continue;
+                                
+                                const finalResult4 = this.calculate(nums[0], result8, op1);
+                                if (finalResult4 === 24) {
+                                    return {
+                                        finalExpression: `${nums[0]} ${op1} (${nums[1]} ${op2} (${nums[2]} ${op3} ${nums[3]}))`,
+                                        steps: [
+                                            { expression: `${nums[2]} ${op3} ${nums[3]} = ${result7}`, description: `第一步：先计算最内层 ${nums[2]} ${op3} ${nums[3]}` },
+                                            { expression: `${nums[1]} ${op2} ${result7} = ${result8}`, description: `第二步：计算 ${nums[1]} ${op2} 上一步结果 ${result7}` },
+                                            { expression: `${nums[0]} ${op1} ${result8} = 24`, description: `第三步：计算 ${nums[0]} ${op1} 上一步结果 ${result8}，得到24` }
+                                        ]
+                                    };
+                                }
+                                
+                                // 情况5: (a op1 b) op2 (c op3 d)
+                                const result9 = this.calculate(nums[0], nums[1], op1);
+                                if (result9 === null) continue;
+                                
+                                const result10 = this.calculate(nums[2], nums[3], op3);
+                                if (result10 === null) continue;
+                                
+                                const finalResult5 = this.calculate(result9, result10, op2);
+                                if (finalResult5 === 24) {
+                                    return {
+                                        finalExpression: `(${nums[0]} ${op1} ${nums[1]}) ${op2} (${nums[2]} ${op3} ${nums[3]})`,
+                                        steps: [
+                                            { expression: `${nums[0]} ${op1} ${nums[1]} = ${result9}`, description: `第一步：计算左侧 ${nums[0]} ${op1} ${nums[1]}` },
+                                            { expression: `${nums[2]} ${op3} ${nums[3]} = ${result10}`, description: `第二步：计算右侧 ${nums[2]} ${op3} ${nums[3]}` },
+                                            { expression: `${result9} ${op2} ${result10} = 24`, description: `第三步：将两侧结果 ${result9} ${op2} ${result10}，得到24` }
+                                        ]
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return null; // 没有找到答案
+            }
+
+            // 计算两个数字的结果
+            calculate(a, b, operator) {
+                switch (operator) {
+                    case '+':
+                        return a + b;
+                    case '-':
+                        // 确保结果不为负数
+                        if (a < b) return null;
+                        return a - b;
+                    case '×':
+                        return a * b;
+                    case '÷':
+                        // 确保除数不为零且能整除
+                        if (b === 0 || a % b !== 0) return null;
+                        return a / b;
+                    default:
+                        return null;
+                }
+            }
+
+            // 获取数组的所有排列
+            getPermutations(arr) {
+                const result = [];
+                
+                const permute = (current, remaining) => {
+                    if (remaining.length === 0) {
+                        result.push([...current]);
+                        return;
+                    }
+                    
+                    for (let i = 0; i < remaining.length; i++) {
+                        const next = remaining[i];
+                        current.push(next);
+                        permute(current, remaining.filter((_, index) => index !== i));
+                        current.pop();
+                    }
+                };
+                
+                permute([], arr);
+                return result;
+            }
+        }
+
+        // 启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            new Game24();
+        });
+    </script>
+</body>
+</html>

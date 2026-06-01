@@ -1,82 +1,627 @@
 <!DOCTYPE html>
-<html lang="GBK">
+<html lang="zh-CN">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>kaichun's Applications</title>
-	<style type="text/css">
-		/* 全局样式 */
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>工具箱 — 小工具与小游戏合集</title>
+	<meta name="description" content="一个精心整理的在线小工具与小游戏合集，包含收音机、视频播放器、番茄钟、五子棋、数独等实用工具。">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap"
+		rel="stylesheet">
+	<style>
+		/* ========== Design Tokens ========== */
+		:root {
+			--color-bg: #fafafa;
+			--color-surface: #ffffff;
+			--color-text-primary: #1a1a2e;
+			--color-text-secondary: #64648c;
+			--color-text-tertiary: #9e9eb8;
+			--color-border: #e8e8f0;
+			--color-border-hover: #d0d0e0;
+
+			/* Category accent colors */
+			--color-media: #6366f1;
+			--color-media-bg: #eef2ff;
+			--color-media-border: #c7d2fe;
+
+			--color-game: #f59e0b;
+			--color-game-bg: #fffbeb;
+			--color-game-border: #fde68a;
+
+			--color-tool: #10b981;
+			--color-tool-bg: #ecfdf5;
+			--color-tool-border: #a7f3d0;
+
+			--color-learn: #ec4899;
+			--color-learn-bg: #fdf2f8;
+			--color-learn-border: #fbcfe8;
+
+			--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+			--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+			--shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.08);
+			--shadow-card-hover: 0 12px 40px rgba(0, 0, 0, 0.10);
+
+			--radius-sm: 8px;
+			--radius-md: 12px;
+			--radius-lg: 16px;
+
+			--font-sans: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+
+			--transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+			--transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		}
+
+		/* ========== Reset & Base ========== */
+		*,
+		*::before,
+		*::after {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		html {
+			scroll-behavior: smooth;
+			-webkit-font-smoothing: antialiased;
+			-moz-osx-font-smoothing: grayscale;
+		}
+
 		body {
-		    font-family: Arial, sans-serif;
-		    background-color: #f4f4f9;
-		    margin: 0;
-		    padding: 0;
-		    display: flex;
-		    justify-content: center;
-		    align-items: center;
-		    min-height: 100vh;
+			font-family: var(--font-sans);
+			background-color: var(--color-bg);
+			color: var(--color-text-primary);
+			line-height: 1.6;
+			min-height: 100vh;
 		}
 
+		a {
+			text-decoration: none;
+			color: inherit;
+		}
+
+		/* ========== Layout ========== */
 		.container {
-		    background-color: #fff;
-		    border-radius: 8px;
-		    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-		    padding: 20px;
-		    width: 90%;
-		    max-width: 400px;
+			max-width: 960px;
+			margin: 0 auto;
+			padding: 0 24px;
 		}
 
-		h1 {
-		    text-align: center;
-		    color: #333;
+		/* ========== Header ========== */
+		.header {
+			padding: 32px 0 24px;
 		}
 
-		nav ul {
-		    list-style-type: none;
-		    padding: 0;
+		.header-top {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 14px;
 		}
 
-		nav ul li {
-		    margin: 15px 0;
-		    text-align: center;
+		.header-logo {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 40px;
+			height: 40px;
+			background: linear-gradient(135deg, #6366f1, #8b5cf6);
+			border-radius: var(--radius-sm);
+			box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+			flex-shrink: 0;
 		}
 
-		nav ul li a {
-		    display: block;
-		    background-color: #007BFF;
-		    color: white;
-		    padding: 10px;
-		    border-radius: 5px;
-		    text-decoration: none;
-		    transition: background-color 0.3s ease;
+		.header-logo svg {
+			width: 20px;
+			height: 20px;
+			color: #fff;
 		}
 
-		nav ul li a:hover {
-		    background-color: #0056b3;
+		.header h1 {
+			font-size: 24px;
+			font-weight: 700;
+			letter-spacing: -0.5px;
+			color: var(--color-text-primary);
 		}
-		
-		p {
-			display:none;
+
+		.header p {
+			font-size: 14px;
+			color: var(--color-text-secondary);
+			font-weight: 400;
+			text-align: center;
+			margin-top: 6px;
+		}
+
+		/* ========== Section ========== */
+		.section {
+			margin-bottom: 40px;
+		}
+
+		.section-header {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 16px;
+			padding-left: 4px;
+		}
+
+		.section-icon {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 32px;
+			height: 32px;
+			border-radius: var(--radius-sm);
+			font-size: 16px;
+			flex-shrink: 0;
+		}
+
+		.section-icon.media {
+			background: var(--color-media-bg);
+		}
+
+		.section-icon.game {
+			background: var(--color-game-bg);
+		}
+
+		.section-icon.tool {
+			background: var(--color-tool-bg);
+		}
+
+		.section-icon.learn {
+			background: var(--color-learn-bg);
+		}
+
+		.section-title {
+			font-size: 14px;
+			font-weight: 600;
+			color: var(--color-text-secondary);
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+		}
+
+		/* ========== Card Grid ========== */
+		.card-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+			gap: 12px;
+		}
+
+		/* ========== Card ========== */
+		.card {
+			display: flex;
+			align-items: center;
+			gap: 14px;
+			padding: 16px 18px;
+			background: var(--color-surface);
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius-md);
+			box-shadow: var(--shadow-sm);
+			transition:
+				transform var(--transition-smooth),
+				box-shadow var(--transition-smooth),
+				border-color var(--transition-smooth);
+			cursor: pointer;
+			position: relative;
+			overflow: hidden;
+		}
+
+		.card::before {
+			content: '';
+			position: absolute;
+			left: 0;
+			top: 0;
+			bottom: 0;
+			width: 3px;
+			border-radius: 0 2px 2px 0;
+			opacity: 0;
+			transition: opacity var(--transition-fast);
+		}
+
+		.card:hover {
+			transform: translateY(-2px);
+			box-shadow: var(--shadow-card-hover);
+			border-color: var(--color-border-hover);
+		}
+
+		.card:hover::before {
+			opacity: 1;
+		}
+
+		.card:active {
+			transform: translateY(0);
+			box-shadow: var(--shadow-md);
+		}
+
+		/* Card accent colors per category */
+		.card.media::before {
+			background: var(--color-media);
+		}
+
+		.card.game::before {
+			background: var(--color-game);
+		}
+
+		.card.tool::before {
+			background: var(--color-tool);
+		}
+
+		.card.learn::before {
+			background: var(--color-learn);
+		}
+
+		.card-icon {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 40px;
+			height: 40px;
+			border-radius: var(--radius-sm);
+			font-size: 20px;
+			flex-shrink: 0;
+			transition: transform var(--transition-smooth);
+		}
+
+		.card:hover .card-icon {
+			transform: scale(1.1);
+		}
+
+		.card.media .card-icon {
+			background: var(--color-media-bg);
+		}
+
+		.card.game .card-icon {
+			background: var(--color-game-bg);
+		}
+
+		.card.tool .card-icon {
+			background: var(--color-tool-bg);
+		}
+
+		.card.learn .card-icon {
+			background: var(--color-learn-bg);
+		}
+
+		.card-info {
+			display: flex;
+			flex-direction: column;
+			min-width: 0;
+		}
+
+		.card-name {
+			font-size: 14px;
+			font-weight: 600;
+			color: var(--color-text-primary);
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.card-desc {
+			font-size: 12px;
+			color: var(--color-text-tertiary);
+			font-weight: 400;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			margin-top: 2px;
+		}
+
+		/* ========== Footer ========== */
+		.footer {
+			text-align: center;
+			padding: 48px 0 32px;
+			border-top: 1px solid var(--color-border);
+			margin-top: 24px;
+		}
+
+		.footer p {
+			font-size: 13px;
+			color: var(--color-text-tertiary);
+			font-weight: 400;
+		}
+
+
+
+		/* ========== Responsive ========== */
+
+		/* Touch devices: disable hover transform, use active state instead */
+		@media (hover: none) and (pointer: coarse) {
+			.card:hover {
+				transform: none;
+				box-shadow: var(--shadow-sm);
+				border-color: var(--color-border);
+			}
+
+			.card:hover::before {
+				opacity: 0;
+			}
+
+			.card:hover .card-icon {
+				transform: none;
+			}
+
+			.card:active {
+				transform: scale(0.97);
+				box-shadow: var(--shadow-md);
+				transition-duration: 0.1s;
+			}
+
+			.card:active::before {
+				opacity: 1;
+			}
+		}
+
+		@media (max-width: 640px) {
+			.container {
+				padding: 0 16px;
+			}
+
+			.header {
+				padding: 24px 0 16px;
+			}
+
+			.header-top {
+				gap: 10px;
+			}
+
+			.header-logo {
+				width: 36px;
+				height: 36px;
+			}
+
+			.header-logo svg {
+				width: 18px;
+				height: 18px;
+			}
+
+			.header h1 {
+				font-size: 20px;
+			}
+
+			.header p {
+				font-size: 13px;
+			}
+
+			.section {
+				margin-bottom: 28px;
+			}
+
+			.section-header {
+				margin-bottom: 12px;
+			}
+
+			.card-grid {
+				grid-template-columns: 1fr;
+				gap: 10px;
+			}
+
+			.card {
+				padding: 14px 16px;
+				min-height: 56px;
+				-webkit-tap-highlight-color: transparent;
+			}
+
+			.card-icon {
+				width: 36px;
+				height: 36px;
+				font-size: 18px;
+			}
+
+			.card-name {
+				font-size: 14px;
+			}
+
+			.card-desc {
+				font-size: 11px;
+			}
+
+			.footer {
+				padding: 32px 0 24px;
+			}
+
+			.footer p {
+				font-size: 12px;
+			}
+		}
+
+		@media (min-width: 641px) and (max-width: 768px) {
+			.card-grid {
+				grid-template-columns: repeat(2, 1fr);
+			}
+		}
+
+		/* ========== Animation on load ========== */
+		@keyframes fadeInUp {
+			from {
+				opacity: 0;
+				transform: translateY(12px);
+			}
+
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		.section {
+			animation: fadeInUp 0.5s ease-out both;
+		}
+
+		.section:nth-child(1) {
+			animation-delay: 0.05s;
+		}
+
+		.section:nth-child(2) {
+			animation-delay: 0.12s;
+		}
+
+		.section:nth-child(3) {
+			animation-delay: 0.19s;
+		}
+
+		.section:nth-child(4) {
+			animation-delay: 0.26s;
 		}
 	</style>
 </head>
 
 <body>
-    <div class="container">
-        <h1>kaichun's Applications</h1>
-        <nav>
-            <ul>
-                <li><a href="./RadioFM.html">RaidoFM</a></li>
-				<li><a href="./TVPlayer.html">TVPlayer</a></li>
-                <li><a href="./Pomodoro.html">番茄钟</a></li>
-                <li><a href="./Gomoku.html">五子棋</a></li>
-				<li><a href="./sudoku.html">数独</a></li>
-                <li><a href="./m3u-player.html">m3u播放器</a></li>
-				<li><a href="./m3u.html">音频播放器</a></li>
-            </ul>
-        </nav>
-    </div>
+
+	<!-- Header -->
+	<header class="header container">
+		<div class="header-top">
+			<div class="header-logo">
+				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+					stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<rect x="3" y="3" width="7" height="7" rx="1" />
+					<rect x="14" y="3" width="7" height="7" rx="1" />
+					<rect x="3" y="14" width="7" height="7" rx="1" />
+					<rect x="14" y="14" width="7" height="7" rx="1" />
+				</svg>
+			</div>
+			<h1>工具箱</h1>
+		</div>
+		<p>精心整理的在线小工具与小游戏合集，即开即用。</p>
+	</header>
+
+	<main class="container" id="app"></main>
+
+	<!-- Footer -->
+	<footer class="footer">
+		<div class="container">
+			<p>所有工具均为静态网页，无需安装，即开即用。</p>
+		</div>
+	</footer>
+
+	<script>
+		// ============================================================
+		//  📋 工具数据配置（增删工具只需编辑这个数组）
+		// ============================================================
+		//
+		//  每个工具的格式：
+		//  { name: "名称", desc: "描述", icon: "emoji", href: "链接", category: "分类key" }
+		//
+		//  category 可选值：media / game / tool / learn
+		//  （如需新增分类，在下方 CATEGORIES 中添加即可）
+		//
+		// ────────────────────────────────────────────────────────────
+		//  🎨 可用图标速查表（直接复制粘贴到 icon 字段即可）
+		// ────────────────────────────────────────────────────────────
+		//
+		//  📱 媒体 & 娱乐
+		//  📻 收音机  🎵 音乐  🎶 音符  🎧 耳机  🎤 麦克风
+		//  📺 电视    🎬 电影  📹 摄像  📷 相机  🖥️ 显示器
+		//  📡 天线    🔊 喇叭  🎙️ 话筒  📀 光盘  🎞️ 胶片
+		//
+		//  🎮 游戏 & 益智
+		//  🎮 游戏手柄  🎯 靶心    🎲 骰子  🃏 扑克  ♟️ 国际象棋
+		//  🧩 拼图      ⚫ 黑子    ⚪ 白子   🏆 奖杯  🎰 老虎机
+		//  🔢 数字      🧮 算盘    🎳 保龄球 🏅 奖牌  ⭐ 星星
+		//
+		//  🛠️ 工具 & 效率
+		//  🛠️ 工具    🔧 扳手  🔨 锤子    ⚙️ 齿轮  🔩 螺丝
+		//  📝 备忘录  📋 剪贴板  📊 图表  📈 趋势  📉 下降
+		//  🍅 番茄    ⏱️ 计时器  ⏰ 闹钟  🕐 时钟  📅 日历
+		//  🔍 搜索    🔗 链接    💡 灯泡  🧲 磁铁  🗂️ 文件夹
+		//  ✂️ 剪刀    📌 图钉    🖊️ 钢笔  ✏️ 铅笔  🖌️ 画笔
+		//
+		//  📚 学习 & 教育
+		//  📚 书籍    📖 翻开的书  📕 红皮书  📗 绿皮书  📘 蓝皮书
+		//  🎓 毕业帽  🏫 学校      📐 三角尺  📏 直尺    🔬 显微镜
+		//  🧪 试管    🌐 地球      🗺️ 地图   💬 对话    🈳 日语符号
+		//
+		//  💰 金融 & 商务
+		//  💰 钱袋    💵 美元  💴 日元  💶 欧元  💷 英镑
+		//  📊 柱状图  💹 股市  🏦 银行  💳 信用卡  🧾 收据
+		//
+		//  🎨 设计 & 创意
+		//  🎨 调色板  🖼️ 画框  ✨ 闪光  🌈 彩虹  💎 钻石
+		//  🎭 面具    🎪 马戏  🎠 旋转  🪄 魔法棒  🫧 气泡
+		//
+		//  🌍 网络 & 通信
+		//  🌐 地球    📧 邮件  💬 消息  📱 手机   💻 电脑
+		//  🔒 锁      🔑 钥匙  🛡️ 盾牌  📶 信号  🔔 铃铛
+		//
+		//  🍽️ 生活 & 健康
+		//  🍽️ 餐具  ❤️ 爱心   🏃 跑步  🧘 瑜伽  💊 药丸
+		//  🌡️ 温度计  🧴 瓶子  🛒 购物车  🏠 房屋  🚗 汽车
+		//
+		// ────────────────────────────────────────────────────────────
+		const TOOLS = [
+			// —— 媒体娱乐 ——
+			{ name: "Simple Radio", desc: "在线收音机", icon: "📻", href: "./m3u.html", category: "media" },
+			{ name: "RadioFM", desc: "FM 电台播放器", icon: "🎵", href: "./RadioFM.html", category: "media" },
+			{ name: "TVPlayer", desc: "在线电视播放", icon: "📺", href: "./TVPlayer.html", category: "media" },
+			{ name: "M3U播放器", desc: "M3U音频播放器", icon: "🎧", href: "./m3u-player.html", category: "media" },
+			{ name: "手持弹幕LED生成器", desc: "手持弹幕LED生成器", icon: "✨", href: "./led.html", category: "media" },
+
+			// —— 益智游戏 ——
+			{ name: "五子棋", desc: "经典棋盘对弈", icon: "⚫", href: "./Gomoku.html", category: "game" },
+			{ name: "9路围棋", desc: "经典棋盘对弈", icon: "⚪", href: "./go9.html", category: "game" },
+			{ name: "数独", desc: "逻辑填数挑战", icon: "🔢", href: "./sudoku.html", category: "game" },
+			{ name: "24点挑战", desc: "算术益智游戏", icon: "🃏", href: "./Game-24.html", category: "game" },
+			{ name: "24点求解器", desc: "自动计算解法", icon: "🧮", href: "./24.html", category: "game" },
+			{ name: "俄罗斯方块", desc: "俄罗斯方块", icon: "🎮", href: "./tetris.html", category: "game" },
+			{ name: "扫雷", desc: "扫雷", icon: "⭐", href: "./mine.html", category: "game" },
+			{ name: "舒尔特方格", desc: "舒尔特方格", icon: "🔢", href: "./schulte.html", category: "game"},
+
+			// —— 效率工具 ——
+			{ name: "番茄钟", desc: "专注时间管理", icon: "🍅", href: "./Pomodoro.html", category: "tool" },
+			{ name: "Roam Capture", desc: "快速笔记捕捉", icon: "📝", href: "./roam.html", category: "tool" },
+
+			// —— 学习教育 ——
+			{ name: "中考单词背诵", desc: "英语词汇记忆", icon: "📖", href: "./lingo.html", category: "learn" },
+		];
+
+		// ============================================================
+		//  📂 分类配置（按此顺序显示，如需新增分类在此添加）
+		// ============================================================
+		const CATEGORIES = [
+			{ key: "media", title: "媒体娱乐", icon: "📻" },
+			{ key: "game", title: "益智游戏", icon: "🎮" },
+			{ key: "tool", title: "效率工具", icon: "🛠️" },
+			{ key: "learn", title: "学习教育", icon: "�" },
+		];
+
+		// ============================================================
+		//  🔧 渲染逻辑（一般不需要修改）
+		// ============================================================
+		function render() {
+			const app = document.getElementById("app");
+			let html = "";
+
+			for (const cat of CATEGORIES) {
+				const items = TOOLS.filter(t => t.category === cat.key);
+				if (items.length === 0) continue;
+
+				html += `
+            <section class="section" id="${cat.key}">
+                <div class="section-header">
+                    <span class="section-icon ${cat.key}">${cat.icon}</span>
+                    <h2 class="section-title">${cat.title}</h2>
+                </div>
+                <div class="card-grid">
+                    ${items.map(t => `
+                    <a href="${t.href}" class="card ${cat.key}">
+                        <div class="card-icon">${t.icon}</div>
+                        <div class="card-info">
+                            <span class="card-name">${t.name}</span>
+                            <span class="card-desc">${t.desc}</span>
+                        </div>
+                    </a>`).join("")}
+                </div>
+            </section>`;
+			}
+
+			app.innerHTML = html;
+		}
+
+		render();
+	</script>
+
 </body>
 
 </html>

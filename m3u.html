@@ -4,7 +4,7 @@
   <!-- Meta tags and title -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>M3U Player</title>
+  <title>Simple Radio</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg width='158' height='158' xmlns='http://www.w3.org/2000/svg'>
    <g>
      <rect fill='%23D4AF37' stroke='%23000' x='4.5' y='51.25' width='149' height='94' rx='20' stroke-width='5'/>
@@ -116,7 +116,7 @@
     
     /* Playlist container styling */
     .playlist {
-      max-height: 164px;
+      max-height: 270px;
       overflow: auto;
       padding: 0 10px;
       margin-bottom: 5px;
@@ -295,7 +295,7 @@
     <!-- Playlist container where tracks will be listed -->
     <div class="playlist" id="playlist"></div>
     <!-- Stream info box displaying current track title and URL -->
-    <div class="stream-info" style="display:flex; align-items:center; justify-content: space-between; border:1px solid #777; padding:4px 8px; margin-top:10px; line-height:1.2em;">
+    <div class="stream-info" style="display:none; align-items:center; justify-content: space-between; border:1px solid #777; padding:4px 8px; margin-top:10px; line-height:1.2em;">
       <!-- Stream details container: prevents text overflow -->
       <div class="stream-details" style="flex:1; overflow:hidden; margin-right:8px;">
         <!-- Stream title with ellipsis for overflow -->
@@ -318,16 +318,53 @@
   <script>
     // Define the music playlist with track URLs and titles
     let playlist = [
-        { url: 'http://iovliveplay.radio.cn/fm/1600000000510h.m3u8', title: '中国之声' },
-        { url: 'http://iovliveplay.radio.cn/fm/1600000000512h.m3u8', title: '音乐之声' },
-        { url: 'http://iovliveplay.radio.cn/fm/1600000000716h.m3u8', title: '经典音乐广播' },
-        { url: 'http://iovliveplay.radio.cn/fm/1600000000328h.m3u8', title: '香港之声' },
-        { url: 'http://iovliveplay.radio.cn/fm/1600000000327h.m3u8', title: '文艺之声' },
-        { url: 'https://sk.cri.cn/887.m3u8', title: 'Hit FM' },
-        { url: 'http://iovliveplay.radio.cn/fm/1600000000484h.m3u8', title: '大湾区之声' },
-        { url: 'http://iovliveplay.radio.cn/fm/1600000000113h.m3u8', title: '南京音乐广播' },
-        { url: 'http://iovliveplay.radio.cn/fm/1600000000616h.m3u8', title: '上海动感101' },
-        { url: 'http://202.39.43.67:1935/live/RA000036/playlist.m3u8', title: '台北Hit FM' }
+        { url: 'https://iovliveplay.radio.cn/fm/1600000000510h.m3u8', title: '中国之声' },
+        { url: 'https://iovliveplay.radio.cn/fm/1600000000512h.m3u8', title: '音乐之声' },
+        { url: 'https://iovliveplay.radio.cn/fm/1600000000716h.m3u8', title: '经典音乐广播' },
+        { url: 'https://iovliveplay.radio.cn/fm/1600000000328h.m3u8', title: '香港之声' },
+        { url: 'https://iovliveplay.radio.cn/fm/1600000000327h.m3u8', title: '文艺之声' },
+		{ url: 'https://iovliveplay.radio.cn/fm/1600000002278h.m3u8', title: '台海之声' },
+		{ url: 'https://iovliveplay.radio.cn/fm/1600000000484h.m3u8', title: '大湾区之声' },
+		{ url: 'https://sk.cri.cn/hyhq.m3u8', title: '华语环球广播' },	
+        { url: 'https://sk.cri.cn/905.m3u8', title: '环球资讯广播' },
+		{ url: 'https://sk.cri.cn/am846.m3u8', title: 'CGTN' },	
+		{ url: 'https://sk.cri.cn/nhzs.m3u8', title: '南海之声' },
+		{ url: 'https://piccpndali.v.myalicdn.com/audio/cctv13_2.m3u8', title: 'CCTV新闻' },
+		{ url: 'https://piccpndali.v.myalicdn.com/audio/cctv1_2.m3u8', title: 'CCTV综合' },
+		{ url: 'https://iovliveplay.radio.cn/fm/1600000000481h.m3u8', title: '北京音乐广播' },	
+		{ url: 'https://iovliveplay.radio.cn/fm/1600000000459h.m3u8', title: '北京文艺广播' },	
+		{ url: 'https://iovliveplay.radio.cn/fm/1600000000508h.m3u8', title: '北京经典音乐广播' },
+		{ url: 'https://iovliveplay.radio.cn/fm/1600000000454h.m3u8', title: '北京交通广播' },	
+        { url: 'https://iovliveplay.radio.cn/fm/1600000000113h.m3u8', title: '南京音乐广播' },
+        { url: 'https://iovliveplay.radio.cn/fm/1600000000616h.m3u8', title: '上海动感101' },
+        { url: 'https://iovliveplay.radio.cn/fm/1600000000657h.m3u8', title: '上海流行音乐' },		
+        { url: 'https://iovliveplay.radio.cn/fm/1600000002378h.m3u8', title: '楚天音乐广播' },
+        { url: 'https://iovliveplay.radio.cn/fm/1600000002407h.m3u8', title: '深圳飞扬971' },
+        { url: 'https://iovliveplay.radio.cn/fm/1600000004739h.m3u8', title: '聆听古典' },
+        { url: 'https://iovliveplay.radio.cn/fm/1600000004726h.m3u8', title: '河南古典音乐' },
+        { url: 'https://lhttp.qingting.fm/live/20210756/64k.mp3', title: '天籁古典' },
+        { url: 'https://iovliveplay.radio.cn/fm/1600000002503h.m3u8', title: '哈尔滨古典音乐广播' },
+		{ url: 'https://iovliveplay.radio.cn/fm/1600000002241h.m3u8', title: '怀集音乐台' },
+        { url: 'https://stream.rcs.revma.com/aw9uqyxy2tzuv', title: '中广流行网' },
+        { url: 'https://stream.rcs.revma.com/ks4vsmg3qtzuv', title: '中广音乐网' },
+		{ url: 'https://28153.live.streamtheworld.com/883JIAAAC.aac', title: 'Singapore 88.3Jia' },
+		{ url: 'https://28373.live.streamtheworld.com/CLASS95AAC.aac', title: 'Singapore Class 95' },
+		{ url: 'https://22403.live.streamtheworld.com/GOLD905_SC', title: 'Singapore Gold 905' },
+		{ url: 'https://22393.live.streamtheworld.com/YES933_PREM.aac', title: 'Singapore YES 933' },
+		{ url: 'https://22393.live.streamtheworld.com/987FM_PREM.aac', title: 'Singapore 987FM' },
+		{ url: 'https://22893.live.streamtheworld.com/938NOW_SC', title: 'Singapore CNA 038' },
+		{ url: 'https://22273.live.streamtheworld.com/988_FMAAC.aac', title: 'Singapore 988' },
+		{ url: 'https://28153.live.streamtheworld.com/KISS_92_SC', title: 'Kiss92' },
+		{ url: 'https://stream.revma.ihrhls.com/zc185/hls.m3u8', title: 'KIIS 102.7' },
+		{ url: 'https://lhttp.qingting.fm/live/4915/64k.mp3', title: '清晨音乐台' },
+		{ url: 'https://lhttp.qingting.fm/live/15318341/64k.mp3', title: 'AsiaFM-HD音乐台' },
+		{ url: 'https://lhttp.qingting.fm/live/5021912/64k.mp3', title: 'AsiaFM亚洲经典台' },
+		{ url: 'https://lhttp.qingting.fm/live/5022405/64k.mp3', title: 'AsiaFM亚洲音乐台' },
+		{ url: 'https://lhttp.qingting.fm/live/20071/64k.mp3', title: 'AsiaFM亚洲天空台' },
+		{ url: 'https://lhttp.qingting.fm/live/20500208/64k.mp3', title: 'AsiaFM亚洲热歌台' },
+		{ url: 'https://lhttp.qingting.fm/live/4998/64k.mp3', title: '萤火虫网络电台' },
+		{ url: 'https://lhttp.qingting.fm/live/4917/64k.mp3', title: '听梦想FM' },
+		{ url: 'https://lhttp.qingting.fm/live/20500038/64k.mp3', title: '卷卷猫电台' }
     ];
     // Track the index of the current track
     let currentTrackIndex = 0;
@@ -506,7 +543,7 @@
         if (!audioElement.paused && !audioElement.currentTime) {
           loadTrack((currentTrackIndex + 1) % playlist.length);
         }
-      }, 3000);
+      }, 10000);
     }
     
     function loadTrack(index, autoplay = true) {
@@ -751,7 +788,7 @@
 
     // Updated M3U loading from web using updatePlaylist
     document.getElementById("load-web-btn").addEventListener("click", () => {
-      const url = prompt("Enter the URL of the M3U file:","http://kaichun.net/radio.m3u");
+      const url = prompt("Enter the URL of the M3U file:","https://kaichun.net/radio.m3u");
       if (url) {
         fetch(url)
           .then(response => {

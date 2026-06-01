@@ -1,0 +1,1451 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Web Radio</title>
+<meta name="description" content="My Web Radio">
+<meta name="theme-color" content="#0b0f14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='52' font-size='48'%3E%F0%9F%8E%A7%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg:#0b0f14;--bg-soft:#111824;--card:#0f1725;--text:#e6edf3;--muted:#aab6c3;--brand:#5fb1ff;--accent:#86efac;--border:#1f2937}
+@media(prefers-color-scheme:light){:root{--bg:#f7f9fc;--bg-soft:#ffffff;--card:#ffffff;--text:#0b0f14;--muted:#4b5563;--brand:#2563eb;--accent:#16a34a;--border:#e5e7eb}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,helvetica neue,Noto Sans,Arial,apple color emoji,segoe ui emoji;color:var(--text);background:var(--bg)}
+.topbar{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-soft);border-bottom:1px solid var(--border);backdrop-filter:saturate(1.2) blur(6px)}
+.brand{font-weight:700;letter-spacing:.2px;color:var(--brand);user-select:none;text-decoration:none}
+#searchInput{flex:1;appearance:none;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px 12px;outline:none}
+#searchInput::placeholder{color:var(--muted)}
+/* Wider main container to reduce left/right empty space */
+#app{max-width:1600px;margin:70px auto 96px;padding:0 12px}
+.loading,.empty,.error{color:var(--muted);text-align:center;padding:24px 12px}
+.section-title{margin:16px 0 10px;font-weight:700;font-size:18px}
+.playlist-meta{color:var(--muted);font-size:13px;margin-bottom:16px}
+/* Wider, denser playlist grid on the home page */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px; padding-bottom: 96px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;transition:transform .08s ease,border-color .08s ease;text-decoration:none;color:inherit}
+.card:hover{transform:translateY(-1px);border-color:#2b3a50}
+.card .title{display:block;font-weight:600;color:var(--text)}
+.card .meta{color:var(--muted);font-size:13px}
+
+/* Sub-pages station list: two columns (responsive) */
+.stations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none; padding-bottom: 96px;} /* Added padding-bottom here */
+@media (max-width: 640px){ .stations{grid-template-columns:1fr} }
+
+.station{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;cursor:pointer}
+.station .play{font-size:18px;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:#111c2a;color:var(--text);cursor:pointer}
+.station .name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.station .actions{display:flex;gap:6px}
+.station .open{border:1px solid var(--border);background:0 0;color:var(--muted);padding:6px 10px;border-radius:8px;cursor:pointer}
+.station.active{outline:2px solid var(--brand)}
+
+.player{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:auto auto auto auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--border);background:linear-gradient(180deg,transparent,rgba(0,0,0,6%)),var(--bg-soft);backdrop-filter:saturate(1.2) blur(6px)}
+.player button{height:40px;width:40px;border-radius:10px;border:1px solid var(--border);background:#111c2a;color:var(--text);cursor:pointer}
+.player .now{min-width:0}
+.now-station{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.now-song{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.now-meta{color:var(--muted);font-size:12px;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Use only one compact metadata line under the station title */
+.now-meta{display:none}
+
+.volume{display:flex;align-items:center;gap:8px}
+.volume-percentage{font-size:13px;color:var(--muted);min-width:4ch;text-align:right}
+#volumeRange{width:100px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.small{color:var(--muted);font-size:13px}
+a.link{color:var(--brand);text-decoration:none}
+a.link:hover{text-decoration:underline}
+
+/* Stack the metadata ("now") on its own row above the controls on small screens */
+@media (max-width: 680px) {
+  .player {
+    /* Keep the same columns but add a second row for the stacked layout */
+    grid-template-columns: auto auto auto auto 1fr auto;
+    grid-template-rows: auto auto;
+  }
+
+  /* Make the metadata line span the full width on the first row */
+  .player .now {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-width: 0; /* keep text truncation working */
+  }
+
+  /* Place the transport buttons and volume on the second row */
+  .player > button,
+  .player > .volume {
+    grid-row: 2;
+  }
+
+  /* Tuck volume to the right */
+  .player > .volume {
+    justify-self: end;
+  }
+
+  /* Slightly tighter UI for small screens */
+  .now-station { font-size: 14px; }
+  .now-song    { font-size: 12px; }
+  #volumeRange { width: 80px; }
+}
+
+/* The hidden audio element shouldn't affect layout */
+.player audio { display: none; }
+
+/* Optional: give content a bit more bottom padding when the player becomes two rows */
+@media (max-width: 680px) {
+  .grid, .stations { padding-bottom: 132px; }
+}
+
+/* Smaller playback controls on narrow screens */
+@media (max-width: 680px) {
+  /* Keep the stacked layout from earlier */
+  .player {
+    grid-template-columns: auto auto auto auto 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 8px;
+  }
+
+  .player .now {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .player > button,
+  .player > .volume {
+    grid-row: 2;
+  }
+
+  .player > .volume { justify-self: end; }
+
+  /* Shrink transport + volume buttons */
+  .player button {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+
+  /* Keep play/pause slightly larger for usability */
+  #playPauseBtn {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+  }
+
+  /* Tighter slider on small screens */
+  #volumeRange { width: 80px; }
+}
+
+/* Extra-small phones */
+@media (max-width: 420px) {
+  .player button {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  #playPauseBtn {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  #volumeRange { width: 64px; }
+  .volume-percentage { display: none; }
+  .volume { gap: 6px; }
+
+  /* Slightly reduce bottom padding since the bar is shorter */
+  .grid, .stations { padding-bottom: 118px; }
+}
+
+/* The audio element stays hidden */
+.player audio { display: none; }
+</style>
+<noscript>This site needs JavaScript to load your playlists.</noscript>
+
+<header class="topbar">
+  <a class="brand" id="brand" href="#/">🎧 My Radio</a>
+  <input type="search" id="searchInput" placeholder="Search…" autocomplete="off">
+</header>
+
+<main id="app">
+  <div class="loading" id="appLoading">Loading…</div>
+</main>
+
+<footer class="player" id="playerBar" aria-label="Audio player" hidden>
+  <button id="prevBtn" title="Previous">⏮️</button>
+  <button id="playPauseBtn" title="Play/Pause">▶️</button>
+  <button id="nextBtn" title="Next">⏭️</button>
+  <button id="shuffleBtn" title="Shuffle">🔀</button>
+  <div class="now">
+    <div id="nowStation" class="now-station">No station selected</div>
+    <div id="nowSong" class="now-song"></div>
+    <div id="nowMeta" class="now-meta"></div>
+  </div>
+  <div class="volume">
+    <button id="muteBtn" title="Mute/Unmute">🔊</button>
+    <button id="volDownBtn" title="Volume Down">-</button>
+    <input id="volumeRange" type="range" min="0" max="1" step="0.01" value="1">
+    <button id="volUpBtn" title="Volume Up">+</button>
+    <span id="volumePercentage" class="volume-percentage">100%</span>
+  </div>
+  <audio id="audio" preload="none" crossorigin="anonymous"></audio>
+</footer>
+
+<script>
+"use strict";
+
+/* Config
+   If your streams block cross-origin metadata (most do), deploy a tiny CORS proxy
+   (e.g., a Cloudflare Worker) and set METADATA_PROXY to its URL. Only metadata
+   fetches go through the proxy; audio playback stays direct.
+
+   Example Worker (deploy this separately and set METADATA_PROXY to its URL):
+   -------------------------------------------------------------------------
+   export default {
+     async fetch(request) {
+       const url = new URL(request.url);
+       const target = url.searchParams.get("u");
+       if (!target) return new Response("Missing ?u=", { status: 400 });
+
+       const upstream = await fetch(target, {
+         method: request.method,
+         headers: {
+           "Icy-MetaData": "1",
+           ...(request.headers.get("Range") ? { Range: request.headers.get("Range") } : {}),
+         },
+         redirect: "follow",
+       });
+
+       const hdr = new Headers(upstream.headers);
+       hdr.set("access-control-allow-origin", "*");
+       hdr.set("access-control-expose-headers", "*");
+       hdr.set("cache-control", "no-store");
+
+       return new Response(upstream.body, {
+         status: upstream.status,
+         statusText: upstream.statusText,
+         headers: hdr,
+       });
+     }
+   };
+*/
+const CONFIG = {
+  API_INDEX_URL: "https://junguler.github.io/m3u-rest-api/api/index.json",
+  SITE_TITLE: "My Radio",
+  METADATA_PROXY: "" // e.g. "https://your-worker.example.workers.dev/"
+};
+
+/* DOM and State */
+const els = {};
+const state = {
+  index: null,
+  indexBase: null,
+  indexDir: null,
+  repoRoot: null,
+  playlistMap: new Map(),
+  currentRoute: null,
+  currentSlug: null,
+  currentPlaylist: null,
+  currentPlaylistUrl: null,
+  currentItems: [],
+  currentIndex: -1,
+  audio: null,
+  audioContext: null,
+  audioSource: null,
+  compressor: null,
+  filter: "",
+  // Robust "now playing" state
+  currentSong: "",
+  songPriority: 0, // higher wins
+  streamMeta: {},
+  metaSeq: 0,       // session guard for async watchers
+  npAbort: null,    // AbortController for ICY loop
+  npStatusTimer: null,
+  npMSessionTimer: null,
+  // Playback watchdog to skip stalled streams
+  playSeq: 0,
+  playWatchdog: null
+};
+
+/* Boot */
+document.addEventListener("DOMContentLoaded", init);
+function init() {
+  cacheDom();
+  wireUI();
+  boot();
+}
+
+function cacheDom() {
+  els.app = document.getElementById("app");
+  els.appLoading = document.getElementById("appLoading");
+  els.searchInput = document.getElementById("searchInput");
+  els.playerBar = document.getElementById("playerBar");
+  els.audio = document.getElementById("audio");
+  els.playPauseBtn = document.getElementById("playPauseBtn");
+  els.prevBtn = document.getElementById("prevBtn");
+  els.nextBtn = document.getElementById("nextBtn");
+  els.shuffleBtn = document.getElementById("shuffleBtn");
+  els.muteBtn = document.getElementById("muteBtn");
+  els.volumeRange = document.getElementById("volumeRange");
+  els.volumePercentage = document.getElementById("volumePercentage");
+  els.volUpBtn = document.getElementById("volUpBtn");
+  els.volDownBtn = document.getElementById("volDownBtn");
+  els.nowStation = document.getElementById("nowStation");
+  els.nowSong = document.getElementById("nowSong");
+  els.nowMeta = document.getElementById("nowMeta");
+  els.brand = document.getElementById("brand");
+  state.audio = els.audio;
+  updateBrandText();
+  updateTitle();
+}
+
+function wireUI() {
+  window.addEventListener("hashchange", onRouteChange);
+  els.searchInput.addEventListener("input", debounce(onSearch, 120));
+
+  els.playPauseBtn.addEventListener("click", togglePlayPause);
+  els.prevBtn.addEventListener("click", playPrev);
+  els.nextBtn.addEventListener("click", playNext);
+  els.shuffleBtn.addEventListener("click", shuffle);
+
+  els.muteBtn.addEventListener("click", toggleMute);
+  els.volumeRange.addEventListener("input", () => setVolume(parseFloat(els.volumeRange.value)));
+  els.volUpBtn.addEventListener("click", volumeUp);
+  els.volDownBtn.addEventListener("click", volumeDown);
+
+  els.audio.addEventListener("playing", () => { updatePlayIcon(true); clearPlayWatchdog(); });
+  els.audio.addEventListener("canplay", clearPlayWatchdog);
+  els.audio.addEventListener("canplaythrough", clearPlayWatchdog);
+  els.audio.addEventListener("pause", () => updatePlayIcon(false));
+  els.audio.addEventListener("volumechange", updateVolumeDisplay);
+  els.audio.addEventListener("error", onAudioError);
+
+  restoreVolume();
+}
+
+async function boot() {
+  try {
+    showLoading(true);
+    state.indexBase = new URL(CONFIG.API_INDEX_URL, location.href);
+    state.indexDir = new URL(".", state.indexBase.href);
+    state.repoRoot = new URL("..", state.indexBase.href);
+
+    const index = await fetchJson(state.indexBase.href);
+    state.index = index;
+    buildPlaylistMap(index);
+    location.hash !== "#/" ? onRouteChange() : location.hash = "#/";
+  } catch (err) {
+    showError(`Failed to load index: ${escapeHtml(err.message || err)}`);
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* UI helpers */
+function showLoading(v) {
+  els.appLoading && els.appLoading.classList.toggle("loading", !!v);
+  if (v) els.app.innerHTML = `<div class="loading">Loading…</div>`;
+}
+function showError(msg) {
+  els.app.innerHTML = `<div class="error">${escapeHtml(msg)}</div>`;
+}
+function buildPlaylistMap(index) {
+  state.playlistMap.clear();
+  const list = Array.isArray(index.playlists) ? index.playlists : [];
+  for (const p of list) {
+    const slug = slugFromPlaylist(p);
+    const url = resolvePlaylistUrl(p.url);
+    state.playlistMap.set(slug, { name: p.name || slug, url, count: p.count ?? null, raw: p });
+  }
+}
+function slugFromPlaylist(p) {
+  if (p && p.url) try {
+    const file = p.url.split("/").pop() || "";
+    if (file) return file.replace(/\.json(\?.*)?$/i, "").toLowerCase();
+  } catch(e) { console.warn("Failed to parse slug from playlist URL:", e); }
+  return slugify(p?.name || "");
+}
+function slugify(s) {
+  return String(s).trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+}
+function resolvePlaylistUrl(u) {
+  if (!u) return "";
+  return /^https?:\/\//i.test(u) ? dedupeApi(u)
+       : /^\/\//.test(u) ? dedupeApi(location.protocol + u)
+       : u.startsWith("/") ? dedupeApi(new URL(u.replace(/^\//,""), state.repoRoot).href)
+       : dedupeApi(u.startsWith("api/") ? new URL(u, state.repoRoot).href : new URL(u, state.indexDir).href);
+}
+function dedupeApi(u) { return u.replace(/(?:\/api)+(\/)/g, "/api$1"); }
+
+function onRouteChange() {
+  const parts = getHashParts();
+  window.scrollTo(0, 0);
+  els.searchInput.value = "";
+  state.filter = "";
+
+  if (parts.length === 0) {
+    state.currentRoute = "";
+    state.currentSlug = null;
+    renderHome();
+    updateTitle();
+    setSearchPlaceholder("Search playlists…");
+    updateBrandText("home");
+    return;
+  }
+
+  if (parts[0] === "p" && parts[1]) {
+    const slug = parts[1].toLowerCase();
+    state.currentRoute = "p";
+    state.currentSlug = slug;
+    renderPlaylist(slug);
+    setSearchPlaceholder("Search streams in this playlist…");
+    updateBrandText("back");
+    return;
+  }
+
+  state.currentRoute = "";
+  state.currentSlug = null;
+  renderHome();
+  updateBrandText("home");
+}
+
+function getHashParts() {
+  const h = (location.hash || "").replace(/^#/,"");
+  return h.split("/").filter(Boolean);
+}
+function updateTitle(t) {
+  document.title = t ? `${t} — ${CONFIG.SITE_TITLE}` : CONFIG.SITE_TITLE;
+}
+function updateBrandText(mode="home") {
+  if (!els.brand) return;
+  mode === "back" ? els.brand.innerHTML = `&larr; Go Back` : els.brand.textContent = `🎧 ${CONFIG.SITE_TITLE}`;
+}
+function setSearchPlaceholder(p) {
+  els.searchInput.placeholder = p;
+}
+function onSearch(e) {
+  state.filter = e.target.value.trim().toLowerCase();
+  if (state.currentRoute === "p" && state.currentPlaylist) renderPlaylistContent(state.currentPlaylist, true);
+  else renderHome(true);
+}
+
+/* Renderers */
+function renderHome(skipTitle=false) {
+  if (!state.index) { els.app.innerHTML = `<div class="loading">Loading…</div>`; return; }
+
+  const q = state.filter;
+  const all = [...state.playlistMap.entries()].map(([slug, data]) => ({ slug, ...data }));
+  const visible = q ? all.filter(p => p.name.toLowerCase().includes(q) || p.slug.includes(q)) : all;
+
+  if (!skipTitle) updateTitle();
+
+  if (!visible.length) {
+    els.app.innerHTML = `
+      <div class="section-title">Playlists</div>
+      <div class="empty">No playlists match “${escapeHtml(q)}”.</div>
+    `;
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  const title = document.createElement("div");
+  title.className = "section-title";
+  title.textContent = `Playlists ${q ? `(filtered)` : ""}`;
+  frag.appendChild(title);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  for (const p of visible) {
+    const a = document.createElement("a");
+    a.className = "card";
+    a.href = `#/p/${p.slug}`;
+    a.innerHTML = `
+      <span class="title">${escapeHtml(p.name)}</span>
+      <span class="meta">${p.count ?? "—"} streams</span>
+    `;
+    grid.appendChild(a);
+  }
+  frag.appendChild(grid);
+  els.app.replaceChildren(frag);
+}
+
+async function renderPlaylist(slug) {
+  const known = state.playlistMap.get(slug);
+  const fallback = known?.url || resolvePlaylistUrl(`playlists/${slug}.json`);
+  const candidates = unique([
+    fallback,
+    resolvePlaylistUrl(`playlists/${slug}.json`),
+    resolvePlaylistUrl(`api/playlists/${slug}.json`)
+  ]);
+  const name = known?.name || slug;
+
+  updateTitle(name);
+  els.app.innerHTML = `<div class="loading">Loading “${escapeHtml(name)}”…</div>`;
+
+  try {
+    const { url, data } = await fetchFirstOkJson(candidates);
+    state.currentPlaylist = data;
+    state.currentPlaylistUrl = url;
+    state.currentItems = Array.isArray(data.items) ? data.items : [];
+    renderPlaylistContent(data);
+  } catch (err) {
+    const last = err?.__lastTried || candidates[candidates.length - 1] || fallback;
+    console.error("Playlist fetch failed:", last, err);
+    els.app.innerHTML = `
+      <div class="error">
+        Failed to load playlist: ${escapeHtml(err.message || err)}<br/>
+        Tried URL: <a class="link" href="${escapeHtml(last)}" target="_blank" rel="noopener">${escapeHtml(last)}</a>
+      </div>
+    `;
+  }
+}
+
+function renderPlaylistContent(pl, skipTitle=false) {
+  const title = pl.name || state.currentSlug || "Playlist";
+  const total = pl.count ?? (pl.items?.length || 0);
+  if (!skipTitle) updateTitle(title);
+
+  const q = state.filter;
+  const items = state.currentItems || [];
+  const visible = q ? items.filter(it => (it.name || "").toLowerCase().includes(q)) : items;
+
+  const frag = document.createDocumentFragment();
+
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML = `
+    <div class="section-title">${escapeHtml(title)}</div>
+    <div class="small">Streams: ${visible.length} ${q ? `(filtered)` : `of ${total}`}</div>
+  `;
+  frag.appendChild(row);
+
+  if (state.currentPlaylistUrl || pl.sourceFile || pl.generatedAt) {
+    const meta = document.createElement("div");
+    meta.className = "playlist-meta";
+    const parts = [];
+    if (state.currentPlaylistUrl) {
+      const url = escapeHtml(state.currentPlaylistUrl);
+      parts.push(`Source: <a class="link" href="${url}" target="_blank" rel="noopener">${url}</a>`);
+    } else if (pl.sourceFile) {
+      parts.push(`Source: ${escapeHtml(pl.sourceFile)}`);
+    }
+    if (pl.generatedAt) parts.push(`Updated: ${escapeHtml(toLocalTime(pl.generatedAt))}`);
+    meta.innerHTML = parts.join(" • ");
+    frag.appendChild(meta);
+  }
+
+  if (!visible.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = `No streams match “${state.filter}”.`;
+    frag.appendChild(empty);
+    els.app.replaceChildren(frag);
+    return;
+  }
+
+  const ul = document.createElement("ul");
+  ul.className = "stations";
+  visible.forEach(item => {
+    const li = document.createElement("li");
+    li.className = "station";
+    const isActive = state.currentIndex >= 0 && state.currentItems[state.currentIndex] === item;
+    if (isActive) li.classList.add("active");
+
+    const btn = document.createElement("button");
+    btn.className = "play";
+    btn.title = "Play";
+    btn.textContent = "▶️";
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const idx = state.currentItems.findIndex(x => x === item || x.url === item.url);
+      if (idx !== -1) playFromList(state.currentItems, idx);
+    });
+
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = item.name || "(Unnamed)";
+
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    const open = document.createElement("button");
+    open.className = "open";
+    open.innerHTML = "↗";
+    open.title = "Open stream URL in new tab";
+    open.addEventListener("click", ev => {
+      ev.stopPropagation();
+      item.url && window.open(item.url, "_blank", "noopener");
+    });
+    actions.appendChild(open);
+
+    li.appendChild(btn);
+    li.appendChild(name);
+    li.appendChild(actions);
+
+    li.addEventListener("click", () => {
+      const idx = state.currentItems.findIndex(x => x === item || x.url === item.url);
+      if (idx !== -1) playFromList(state.currentItems, idx);
+    });
+
+    ul.appendChild(li);
+  });
+
+  frag.appendChild(ul);
+  els.app.replaceChildren(frag);
+  refreshActiveStationHighlight();
+}
+
+/* Playback */
+function playFromList(list, idx) {
+  const item = list[idx];
+  if (!item) return;
+  state.currentIndex = idx;
+  setNowPlaying(item);
+  loadAndPlay(item.url);
+  refreshActiveStationHighlight();
+}
+
+function setNowPlaying(item) {
+  els.nowStation.textContent = item?.name || "Unknown Station";
+  els.nowSong.textContent = "";
+  if (els.nowMeta) els.nowMeta.textContent = "";
+
+  state.currentSong = "";
+  state.songPriority = 0;
+  state.streamMeta = {};
+  els.playerBar.hidden = false;
+
+  persistSession();
+
+  // Start robust "Now Playing" pipeline for this stream
+  startNowPlayingPipeline(item);
+}
+
+function setupAudioNormalization() {
+  if (state.audioContext) return;
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    state.audioContext = new Ctx();
+    state.audioSource = state.audioContext.createMediaElementSource(els.audio);
+    state.compressor = state.audioContext.createDynamicsCompressor();
+    state.compressor.threshold.setValueAtTime(-50, state.audioContext.currentTime);
+    state.compressor.knee.setValueAtTime(40, state.audioContext.currentTime);
+    state.compressor.ratio.setValueAtTime(12, state.audioContext.currentTime);
+    state.compressor.attack.setValueAtTime(0, state.audioContext.currentTime);
+    state.compressor.release.setValueAtTime(.25, state.audioContext.currentTime);
+    state.audioSource.connect(state.compressor);
+    state.compressor.connect(state.audioContext.destination);
+  } catch (e) {
+    console.error("Failed to initialize Web Audio API for normalization:", e);
+  }
+}
+
+function playAudio() {
+  if (!els.audio.src) return;
+  state.audioContext || setupAudioNormalization();
+  if (state.audioContext && state.audioContext.state === "suspended") {
+    state.audioContext.resume().catch(e => console.error("Audio context resume failed:", e));
+  }
+  els.audio.play().catch(e => {
+    if (e.name !== "AbortError") console.warn("Audio play failed:", e);
+  });
+}
+function pauseAudio() { els.audio.pause(); }
+
+function isActuallyPlaying() {
+  const a = els.audio;
+  if (!a) return false;
+  return !a.paused && !a.ended && (a.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA || a.currentTime > 0);
+}
+function clearPlayWatchdog() {
+  if (state.playWatchdog) {
+    clearTimeout(state.playWatchdog);
+    state.playWatchdog = null;
+  }
+}
+function schedulePlayWatchdog() {
+  clearPlayWatchdog();
+  const seq = ++state.playSeq;
+  state.playWatchdog = setTimeout(() => {
+    if (state.playSeq !== seq) return;
+    if (!isActuallyPlaying()) {
+      // Skip to next stream if the current one failed to start in 5s
+      console.warn("Stream did not start within 5s; skipping to next.");
+      if (state.currentItems.length > 1) {
+        playNext();
+      } else {
+        updatePlayIcon(false);
+      }
+    }
+  }, 5000);
+}
+
+function loadAndPlay(url) {
+  try {
+    els.audio.src = url || "";
+    if (!url) { pauseAudio(); return; }
+    playAudio();
+    schedulePlayWatchdog();
+  } catch (e) {
+    console.error("Audio error:", e);
+  }
+}
+
+function togglePlayPause() {
+  if (!els.audio.src) return;
+  els.audio.paused ? playAudio() : pauseAudio();
+}
+function updatePlayIcon(playing) {
+  els.playPauseBtn.textContent = playing ? "⏸️" : "▶️";
+}
+function playNext() {
+  if (!state.currentItems.length) return;
+  const i = (state.currentIndex + 1) % state.currentItems.length;
+  state.currentIndex = i;
+  const it = state.currentItems[i];
+  setNowPlaying(it);
+  loadAndPlay(it.url);
+  refreshActiveStationHighlight();
+}
+function playPrev() {
+  if (!state.currentItems.length) return;
+  const i = (state.currentIndex - 1 + state.currentItems.length) % state.currentItems.length;
+  state.currentIndex = i;
+  const it = state.currentItems[i];
+  setNowPlaying(it);
+  loadAndPlay(it.url);
+  refreshActiveStationHighlight();
+}
+async function shuffle() {
+  if (state.currentRoute === "p" && state.currentItems.length > 0) {
+    const i = Math.floor(Math.random() * state.currentItems.length);
+    playFromList(state.currentItems, i);
+  } else if (state.playlistMap.size > 0) {
+    const keys = Array.from(state.playlistMap.keys());
+    const k = keys[Math.floor(Math.random() * keys.length)];
+    location.hash = `#/p/${k}`;
+  }
+}
+
+/* Volume */
+function toggleMute() { els.audio.muted = !els.audio.muted; persistVolume(); }
+function updateMuteIcon() {
+  const muted = els.audio.muted || els.audio.volume === 0;
+  els.muteBtn.textContent = muted ? "🔇" : "🔊";
+}
+function updateVolumeDisplay() {
+  els.volumeRange.value = els.audio.volume;
+  els.volumePercentage.textContent = `${Math.round(els.audio.volume * 100)}%`;
+  updateMuteIcon();
+  persistVolume();
+}
+function setVolume(v) { els.audio.volume = Math.max(0, Math.min(1, v)); }
+function volumeUp() { setVolume(els.audio.volume + .1); }
+function volumeDown() { setVolume(els.audio.volume - .1); }
+
+/* Errors */
+function onAudioError() {
+  console.warn("Audio error", els.audio.error);
+  clearPlayWatchdog();
+}
+
+/* ===========================
+   ROBUST NOW-PLAYING PIPELINE
+   ===========================
+
+   Multi-source strategy (highest priority wins):
+   5: Timed metadata (HLS ID3 / Icecast with textTracks)
+   4: ICY stream metadata (continuous fetch with Icy-MetaData: 1)
+   3: Server status endpoints (status-json.xsl, etc.) polled
+   2: MediaSession metadata (if browser updates it)
+   1: <audio> title attribute (fallback)
+*/
+
+function startNowPlayingPipeline(item) {
+  const url = item?.url || "";
+  const seq = ++state.metaSeq;
+
+  // Reset song + tech meta baselines
+  state.currentSong = "";
+  state.songPriority = 0;
+  renderMetaLine();
+
+  // Cleanup previous watchers
+  stopNowPlayingWatchers();
+
+  // Tech meta baseline (codec/bitrate/etc)
+  updateTechnicalMetaBaseline(url, item, seq);
+
+  // 1) Timed metadata via textTracks (ID3 for HLS or ICY in some browsers)
+  bindTimedMetadata(els.audio, seq);
+
+  // 2) Continuous ICY metadata reader (if supported and CORS allows)
+  state.npAbort = new AbortController();
+  startIcyStreamLoop(url, seq, state.npAbort.signal).catch(() => { /* ignore */ });
+
+  // 3) Poll common server status endpoints for song/title updates
+  startStatusPolling(url, seq);
+
+  // 4) Poll MediaSession metadata (low priority)
+  startMediaSessionPolling(seq);
+
+  // 5) Fallback from the audio element's title, once
+  if (els.audio.title) updateSongTitle(els.audio.title, 1, seq);
+}
+
+/* Cleanup all watchers for the previous stream */
+function stopNowPlayingWatchers() {
+  if (state.npAbort) { try { state.npAbort.abort(); } catch {} state.npAbort = null; }
+  if (state.npStatusTimer) { clearInterval(state.npStatusTimer); state.npStatusTimer = null; }
+  if (state.npMSessionTimer) { clearInterval(state.npMSessionTimer); state.npMSessionTimer = null; }
+}
+
+/* Priority-aware, de-duplicated song setter */
+function updateSongTitle(rawTitle, priority, seq) {
+  if (state.metaSeq !== seq) return; // stale
+  const title = normalizeTitle(rawTitle);
+  if (!title) return;
+
+  const changed = title !== state.currentSong;
+  const better = priority > (state.songPriority || 0);
+
+  if (better || (changed && priority >= state.songPriority)) {
+    state.currentSong = title;
+    state.songPriority = priority;
+    renderMetaLine();
+  }
+}
+
+function normalizeTitle(s) {
+  if (!s) return "";
+  let t = String(s).replace(/\s+/g, " ").trim();
+
+  const bad = /^(offline|unknown|n\/a|no metadata|stream|radio|live|loading)$|^\s*-+\s*$/i; // Added 'loading'
+  if (bad.test(t)) return "";
+
+  t = t.replace(/\s*[-–—|•]+\s*$/g, "").trim();
+
+  if (state.streamMeta.stationName) {
+    const sn = state.streamMeta.stationName.toLowerCase();
+    if (t.toLowerCase() === sn) return "";
+  }
+
+  return t;
+}
+
+/* Helper: route metadata fetches via proxy (if configured) */
+function proxyMeta(url) {
+  if (!CONFIG.METADATA_PROXY) return url;
+  try {
+    new URL(url); // Check if URL is valid before proxying
+  } catch {
+    return url;
+  }
+  return `${CONFIG.METADATA_PROXY}?u=${encodeURIComponent(url)}`;
+}
+
+/* 1) Timed metadata from textTracks (HLS ID3 cues, etc.) */
+function bindTimedMetadata(audio, seq) {
+  const tracks = audio.textTracks;
+  if (!tracks) return;
+
+  const attach = (track) => {
+    if (!track || track.kind !== "metadata") return;
+    try { track.mode = "hidden"; } catch {}
+    track.oncuechange = () => {
+      if (state.metaSeq !== seq) return;
+      if (!track.activeCues || track.activeCues.length === 0) return;
+      const cue = track.activeCues[track.activeCues.length - 1];
+      let text = "";
+      if (cue && typeof cue.text === "string" && cue.text) {
+        // Try to parse common Icecast/Shoutcast StreamTitle format first
+        const m = /StreamTitle=['"]([^'"]+)['"]/.exec(cue.text);
+        text = m && m[1] ? m[1] : cue.text;
+      }
+      if (text) updateSongTitle(text, 5, seq);
+    };
+  };
+
+  for (let i = 0; i < tracks.length; i++) attach(tracks[i]);
+  tracks.addEventListener?.("addtrack", (e) => attach(e.track), { once: false });
+}
+
+/* 2) Continuous ICY metadata loop (reads StreamTitle updates as they change) */
+async function startIcyStreamLoop(url, seq, signal) {
+  if (!url) return;
+  try {
+    const metaUrl = proxyMeta(url);
+    const resp = await fetch(metaUrl, {
+      method: "GET",
+      mode: "cors",
+      cache: "no-store",
+      headers: { "Icy-MetaData": "1" },
+      signal
+    });
+    if (!resp || !resp.ok || !resp.body) return;
+    const metaint = parseInt(resp.headers.get("icy-metaint") || resp.headers.get("Icy-MetaInt") || "", 10);
+    const stationName = resp.headers.get("icy-name") || resp.headers.get("Icy-Name") || "";
+    if (stationName) state.streamMeta.stationName = stationName;
+
+    if (!metaint || isNaN(metaint)) return;
+
+    const reader = resp.body.getReader();
+    let leftover = new Uint8Array(0);
+
+    const skip = async (len) => {
+      if (leftover.length) {
+        if (leftover.length >= len) { leftover = leftover.subarray(len); return; }
+        len -= leftover.length; leftover = new Uint8Array(0);
+      }
+      while (len > 0) {
+        const { value, done } = await reader.read();
+        if (done) return;
+        if (!value || !value.length) continue;
+        if (value.length <= len) len -= value.length;
+        else { leftover = value.subarray(len); len = 0; }
+      }
+    };
+    const readExactly = async (len) => {
+      let out = new Uint8Array(len), off = 0;
+      if (leftover.length) {
+        const n = Math.min(len, leftover.length);
+        out.set(leftover.subarray(0, n), 0);
+        off += n; leftover = leftover.subarray(n);
+      }
+      while (off < len) {
+        const { value, done } = await reader.read();
+        if (done) return null;
+        if (!value || !value.length) continue;
+        const n = Math.min(len - off, value.length);
+        out.set(value.subarray(0, n), off);
+        off += n;
+        if (n < value.length) leftover = value.subarray(n);
+      }
+      return out;
+    };
+
+    while (!signal.aborted && state.metaSeq === seq) {
+      await skip(metaint);
+      if (signal.aborted || state.metaSeq !== seq) break;
+
+      const lenByte = await readExactly(1);
+      if (!lenByte) break;
+      const metaLen = lenByte[0] * 16;
+      if (metaLen === 0) continue;
+
+      const metaBuf = await readExactly(metaLen);
+      if (!metaBuf) break;
+
+      let meta = "";
+      try { meta = new TextDecoder("latin1").decode(metaBuf); }
+      catch { try { meta = (new TextDecoder()).decode(metaBuf); } catch {} } // Fallback to UTF-8
+      
+      const m = /StreamTitle=['"]([^'"]*)['"]/.exec(meta);
+      const title = m ? m[1].trim() : "";
+      if (title) updateSongTitle(title, 4, seq);
+    }
+  } catch(e) {
+    if (e.name === 'AbortError') { /* Stream loop aborted, ignore */ }
+    else { console.warn("ICY stream metadata loop failed:", e); }
+  }
+}
+
+/* 3) Poll common server endpoints for updates (Icecast/Shoutcast status, custom JSON) */
+function startStatusPolling(url, seq) {
+  if (!url) return;
+  const doPoll = async () => {
+    if (state.metaSeq !== seq) return;
+    const data = await probeServerStatus(url);
+    if (state.metaSeq !== seq || !data) return;
+    if (data.title) updateSongTitle(data.title, 3, seq);
+    applyTechMeta(data, seq);
+  };
+  doPoll();
+  state.npStatusTimer = setInterval(doPoll, 15000);
+}
+
+/* 4) Poll MediaSession metadata for updates (low priority) */
+function startMediaSessionPolling(seq) {
+  if (!("mediaSession" in navigator)) return;
+  const poll = () => {
+    if (state.metaSeq !== seq) return;
+    const md = navigator.mediaSession.metadata;
+    if (!md) return;
+    const t = md.title || [md.artist, md.album].filter(Boolean).join(" — ");
+    if (t) updateSongTitle(t, 2, seq);
+  };
+  poll();
+  state.npMSessionTimer = setInterval(poll, 5000);
+}
+
+/* Technical metadata (codec/bitrate/etc.) */
+function updateTechnicalMetaBaseline(url, item, seq) {
+  const host = (() => { try { return new URL(url).host; } catch { return ""; } })();
+  const codecFromUrl = guessCodecFromUrl(url);
+  let br = item?.bitrate ?? item?.br ?? item?.["icy-br"] ?? null;
+  if (typeof br === "string") br = parseInt(br, 10);
+  let sr = item?.sampleRate ?? item?.samplerate;
+  let ch = item?.channels;
+
+  state.streamMeta = {
+    host,
+    codec: String(item?.codec || item?.format || codecFromUrl || "").toUpperCase(),
+    bitrate: (typeof br === "number" && !isNaN(br)) ? br : null,
+    sampleRate: (typeof sr === "number" && !isNaN(sr)) ? sr : null,
+    channels: (typeof ch === "number" && !isNaN(ch)) ? ch : null,
+    genre: item?.genre || "",
+    server: "",
+    listeners: null,
+    stationName: item?.name || state.nowStation?.textContent || ""
+  };
+  renderMetaLine();
+
+  probeStreamHeaders(url)
+    .then(d => { if (state.metaSeq === seq && d) applyTechMeta(d, seq); })
+    .finally(() => { if (state.metaSeq === seq) renderMetaLine(); });
+
+  probeServerStatus(url)
+    .then(d => { if (state.metaSeq === seq && d) applyTechMeta(d, seq); })
+    .finally(() => { if (state.metaSeq === seq) renderMetaLine(); });
+}
+
+function applyTechMeta(data, seq) {
+  if (state.metaSeq !== seq || !data) return;
+  const keys = ["codec","bitrate","sampleRate","channels","genre","server","listeners","stationName","host",
+                "description", "website", "peakListeners", "streamHits", "streamUptime", "streamStartTime"];
+  for (const k of keys) {
+    const v = data[k];
+    if (v == null || v === "" || (typeof v === "number" && isNaN(v))) continue;
+    state.streamMeta[k] = v;
+  }
+  renderMetaLine();
+}
+
+/* Compact metadata line renderer (song + technicals) */
+function formatSampleRate(sr) {
+  if (typeof sr !== "number" || isNaN(sr) || sr <= 0) return "";
+  if (sr >= 2000) {
+    const khz = Math.round(sr / 100) / 10; // one decimal (e.g., 44100 -> 44.1)
+    return `${khz} kHz`;
+  }
+  return `${sr} Hz`;
+}
+
+function renderMetaLine() {
+  if (!els.nowSong) return;
+  const m = state.streamMeta || {};
+  const parts = [];
+
+  if (state.currentSong && state.currentSong.trim()) parts.push(state.currentSong.trim());
+
+  const codec = (m.codec || "").trim();
+  const br = (typeof m.bitrate === "number" && !isNaN(m.bitrate)) ? `${m.bitrate} kbps` : "";
+  if (codec && br) parts.push(`${codec} ${br}`);
+  else if (codec) parts.push(codec);
+  else if (br) parts.push(br);
+
+  const sr = formatSampleRate(m.sampleRate);
+  if (sr) parts.push(sr);
+
+  if (typeof m.channels === "number" && !isNaN(m.channels)) {
+    parts.push(m.channels === 1 ? "Mono" : m.channels === 2 ? "Stereo" : `${m.channels}ch`);
+  }
+
+  if (m.genre) parts.push(m.genre);
+  if (typeof m.listeners === "number" && !isNaN(m.listeners)) parts.push(`${m.listeners} listeners`);
+  if (m.server) parts.push(m.server);
+  if (m.host) parts.push(m.host);
+  if (m.website) parts.push(m.website);
+  if (m.description) parts.push(m.description);
+
+  const uniq = [];
+  const seen = new Set();
+  for (const p of parts) {
+    const s = String(p).trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    uniq.push(s);
+  }
+
+  els.nowSong.textContent = uniq.join(" • ");
+  if (els.nowMeta) els.nowMeta.textContent = "";
+}
+
+/* Active highlight */
+function refreshActiveStationHighlight() {
+  const nodes = Array.from(document.querySelectorAll(".station"));
+  nodes.forEach(n => n.classList.remove("active"));
+  if (state.currentIndex >= 0 && state.currentIndex < state.currentItems.length) {
+    const cur = state.currentItems[state.currentIndex];
+    for (const n of nodes) {
+      const name = n.querySelector(".name");
+      if (name && cur && name.textContent === (cur.name || "")) {
+        n.classList.add("active");
+        n.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        break;
+      }
+    }
+  }
+}
+
+/* Persistence */
+function persistSession() {
+  try {
+    const data = {
+      slug: state.currentSlug,
+      index: state.currentIndex,
+      station: state.currentItems[state.currentIndex] || null
+    };
+    // reserved for future use
+  } catch(e) { console.error("Failed to persist session:", e); }
+}
+function restoreLastSession() {}
+
+function persistVolume() {
+  try {
+    const raw = localStorage.getItem("radio:last");
+    const data = raw ? JSON.parse(raw) : {};
+    data.volume = els.audio.volume;
+    data.muted = els.audio.muted;
+    localStorage.setItem("radio:last", JSON.stringify({ volume: data.volume, muted: data.muted }));
+  } catch(e) { console.error("Failed to persist volume:", e); }
+}
+function restoreVolume() {
+  try {
+    const raw = localStorage.getItem("radio:last");
+    const data = raw ? JSON.parse(raw) : {};
+    if (typeof data.volume === "number") els.audio.volume = data.volume;
+    els.audio.muted = !!data.muted;
+    updateVolumeDisplay();
+  } catch(e) { console.error("Failed to restore volume:", e); }
+}
+
+/* Networking helpers */
+async function fetchJson(url) {
+  const resp = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+  if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+  return resp.json();
+}
+
+// Modified to use proxyMeta for all external JSON fetches
+async function fetchJsonWithProxy(url, ms = 4500) {
+  const proxiedUrl = proxyMeta(url);
+  const resp = await fetchWithTimeout(proxiedUrl, { headers: { Accept: "application/json" }, mode: "cors", cache: "no-store" }, ms);
+  if (resp && resp.ok) {
+    try { return await resp.json(); } catch(e) { console.warn(`Failed to parse JSON from ${url}:`, e); return null; }
+  }
+  return null;
+}
+
+async function fetchFirstOkJson(list) {
+  let lastErr = null;
+  for (const u of list) {
+    try {
+      // Use direct fetchJson for internal index/playlist JSON, proxy for external if configured
+      const data = (/^https?:\/\//i.test(u) && CONFIG.METADATA_PROXY && !u.startsWith(location.origin)) ? await fetchJsonWithProxy(u) : await fetchJson(u);
+      return { url: u, data };
+    } catch (e) { lastErr = e; }
+  }
+  if (lastErr) { lastErr.__lastTried = list[list.length - 1]; throw lastErr; }
+  throw new Error("All candidate URLs failed");
+}
+
+
+/* Utils */
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+function debounce(fn, ms=100) {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(null, args), ms); };
+}
+function toLocalTime(v) { try { return new Date(v).toLocaleString(); } catch { return v; } }
+function unique(arr) { return Array.from(new Set(arr.filter(Boolean))); }
+
+/* Tech meta probes and parsers */
+function guessCodecFromUrl(u) {
+  try {
+    const p = new URL(u).pathname.toLowerCase();
+    if (p.endsWith(".m3u8")) return "HLS";
+    if (p.endsWith(".aac") || p.endsWith(".aacp")) return "AAC";
+    if (p.endsWith(".mp3")) return "MP3";
+    if (p.endsWith(".ogg") || p.endsWith(".oga")) return "OGG";
+    if (p.endsWith(".opus")) return "OPUS";
+    if (p.endsWith(".flac")) return "FLAC";
+  } catch(e) { console.warn("Error guessing codec from URL:", e); }
+  return "";
+}
+function mapContentTypeToCodec(ct) {
+  const t = (ct || "").toLowerCase();
+  return t.includes("aac") ? "AAC"
+       : t.includes("mpeg") ? "MP3"
+       : t.includes("ogg") ? "OGG"
+       : t.includes("opus") ? "OPUS"
+       : t.includes("flac") ? "FLAC"
+       : (t.includes("x-mpegurl") || t.includes("vnd.apple.mpegurl")) ? "HLS"
+       : "";
+}
+function parseIceAudioInfo(s) {
+  const out = {};
+  String(s || "").split(/[;,]/).forEach(part => {
+    const [k, v] = part.split("=");
+    if (k && v) out[k.trim().toLowerCase()] = v.trim();
+  });
+  return out;
+}
+
+async function fetchWithTimeout(url, init = {}, ms = 4000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const resp = await fetch(url, { ...init, signal: ctrl.signal });
+    clearTimeout(timer);
+    return resp;
+  } catch(e) {
+    if (e.name === 'AbortError') console.debug(`Fetch timed out for ${url}`);
+    else console.warn(`Fetch error for ${url}:`, e);
+    clearTimeout(timer);
+    return null;
+  }
+}
+// Renamed and moved fetchJsonTimeout logic into fetchJsonWithProxy
+// async function fetchJsonTimeout(url, ms = 4500) { ... }
+
+async function probeStreamHeaders(url) {
+  if (!url) return null;
+  const headUrl = proxyMeta(url); // Use proxy for HEAD/GET requests
+  const req = async method => await fetchWithTimeout(headUrl, {
+    method,
+    mode: "cors",
+    cache: "no-store",
+    redirect: "follow",
+    headers: { "Icy-MetaData": "1", ...(method === "GET" ? { Range: "bytes=0-1" } : {}) }
+  }, 3500);
+
+  let resp = await req("HEAD");
+  if ((!resp || !resp.ok) && (resp = await req("GET")), !resp || !resp.ok) return null;
+
+  const h = resp.headers;
+  const data = {};
+  const ct = h.get("content-type") || h.get("Content-Type") || "";
+  data.codec = mapContentTypeToCodec(ct) || "";
+  data.server = (h.get("server") || h.get("Server") || "")?.split("/")[0]?.trim() || "";
+  if (data.server === "Icecast" && ct.includes("mpegurl")) {
+    data.codec = "HLS"; // Sometimes Icecast serves HLS but advertises itself as Icecast
+  }
+
+  const icyName = h.get("icy-name") || h.get("Icy-Name");
+  if (icyName) data.stationName = icyName;
+
+  const icyGenre = h.get("icy-genre") || h.get("Icy-Genre");
+  if (icyGenre) data.genre = icyGenre;
+
+  const icyBr = h.get("icy-br") || h.get("Icy-Br");
+  if (icyBr) {
+    const n = parseInt(icyBr, 10);
+    if (!isNaN(n)) data.bitrate = n;
+  }
+
+  const iceInfo = h.get("ice-audio-info") || h.get("Ice-Audio-Info") || "";
+  if (iceInfo) {
+    const m = parseIceAudioInfo(iceInfo);
+    if (m.bitrate) { const n = parseInt(m.bitrate, 10); if (!isNaN(n)) data.bitrate = n; }
+    if (m.samplerate) { const n = parseInt(m.samplerate, 10); if (!isNaN(n)) data.sampleRate = n; }
+    if (m.channels) { const n = parseInt(m.channels, 10); if (!isNaN(n)) data.channels = n; }
+  }
+  return data;
+}
+
+async function probeServerStatus(url) {
+  let u;
+  try { u = new URL(url); } catch { return null; }
+  const origin = u.origin;
+  const path = u.pathname || "";
+
+  const mk = (p) => `${origin}${p}`; // Use directly if not proxying, else proxyMeta will wrap it
+  const candidates = unique([
+    mk(`/status-json.xsl?mount=${encodeURIComponent(path)}`),
+    mk(`/status-json.xsl`),
+    mk(`/status.xsl?json=1`),
+    mk(`/stats?json=1`),
+    mk(`/stats?sid=1&json=1`),
+    mk(`/stats?sid=2&json=1`),
+    mk(`/stats?sid=3&json=1`),
+    mk(`/statistics?json=1`),
+    mk(`/json.xsl`),
+    mk(`/radio/json`), // Common for some modern radio platforms
+    mk(`/streaminfo`),  // Another common API endpoint
+    mk(`/api/v1/stream/current`), // Example for some specific APIs
+    mk(path.replace(/\.[a-z0-9]+$/i, '') + '/status.json'), // e.g. /stream.mp3 -> /stream/status.json
+  ]);
+
+  for (const c of candidates) {
+    const json = await fetchJsonWithProxy(c, 4500); // All status fetches go through proxy
+    if (!json) continue;
+    const parsed = parseServerStatus(json, u);
+    if (parsed) return parsed;
+  }
+
+  // Also try to parse HLS manifests if applicable for more metadata (like ID3 tags/stream info)
+  if (guessCodecFromUrl(url) === 'HLS') {
+    const hlsMeta = await probeHlsManifest(url);
+    if (hlsMeta) return hlsMeta;
+  }
+
+  return null;
+}
+
+// New function to probe HLS manifest for metadata
+async function probeHlsManifest(hlsUrl) {
+  const proxiedHlsUrl = proxyMeta(hlsUrl);
+  try {
+    const resp = await fetchWithTimeout(proxiedHlsUrl, { cache: 'no-store' }, 5000);
+    if (!resp || !resp.ok) return null;
+    const manifest = await resp.text();
+
+    const data = {};
+    const audioRegex = /TYPE=AUDIO.*URI="([^"]+)"/;
+    const streamInfoRegex = /RESOLUTION=(\d+x\d+).*BANDWIDTH=(\d+)/;
+    const titleRegex = /#EXTINF:\d+,(.*)/; // Basic title extraction if manifest has it
+
+    // Extract Audio-only URI if present (often contains more specific stream metadata)
+    const audioMatch = manifest.match(audioRegex);
+    if (audioMatch && audioMatch[1]) {
+      // You could recursively probe this audio URI for its headers/status if needed
+      // For now, let's just note its presence.
+      data.hlsAudioUri = audioMatch[1];
+    }
+
+    // Extract general stream info if available
+    const streamMatch = manifest.match(streamInfoRegex);
+    if (streamMatch && streamMatch[2]) {
+      const bitrate = Math.round(parseInt(streamMatch[2], 10) / 1000);
+      if (!isNaN(bitrate)) data.bitrate = bitrate;
+    }
+
+    const titleMatch = manifest.match(titleRegex);
+    if (titleMatch && titleMatch[1]) {
+      data.title = titleMatch[1].trim();
+    }
+
+    // For HLS, the codec is usually inferred from the content type, but we can set it explicitly
+    data.codec = data.codec || "HLS";
+
+    return Object.keys(data).length > 0 ? data : null;
+  } catch (e) {
+    console.warn("Failed to probe HLS manifest:", e);
+    return null;
+  }
+}
+
+
+function parseServerStatus(json, u) {
+  // --- Icecast/Shoutcast specific parsing ---
+  if (json.icestats) {
+    const ic = json.icestats;
+    const srcs = Array.isArray(ic.source) ? ic.source : (ic.source ? [ic.source] : []);
+    const mount = u?.pathname || "";
+    let src = srcs[0] || null;
+    if (mount && srcs.length > 1) {
+      const exact = srcs.find(s => { try { return s.listenurl && new URL(s.listenurl).pathname === mount; } catch { return false; } });
+      src = exact || srcs.find(s => String(s.listenurl || "").includes(mount)) || src;
+    }
+    if (!src) return null;
+
+    const out = {};
+    const ai = src.audio_info || src["ice-audio-info"] || "";
+    const parsed = parseIceAudioInfo(ai);
+
+    if (src.bitrate) { const n = parseInt(src.bitrate, 10); if (!isNaN(n)) out.bitrate = n; }
+    if (parsed.bitrate) { const n = parseInt(parsed.bitrate, 10); if (!isNaN(n)) out.bitrate = n; }
+    if (parsed.samplerate) { const n = parseInt(parsed.samplerate, 10); if (!isNaN(n)) out.sampleRate = n; }
+    if (parsed.channels) { const n = parseInt(parsed.channels, 10); if (!isNaN(n)) out.channels = n; }
+    if (src.genre) out.genre = src.genre;
+    if (src.listeners != null) { const n = parseInt(src.listeners, 10); if (!isNaN(n)) out.listeners = n; }
+    if (src.server_name) out.stationName = src.server_name;
+    if (src.server_type) out.codec = out.codec || mapContentTypeToCodec(String(src.server_type));
+    if (src.title) out.title = src.title;
+    if (src.description) out.description = src.description; // Added description
+    if (src.url) out.streamUrl = src.url; // Added stream URL from status
+    if (src.stream_start_iso8601) out.streamStartTime = src.stream_start_iso8601; // Added stream start time
+
+    return out;
+  }
+
+  // --- Shoutcast v1/v2 style parsing (often less structured) ---
+  if (json.streams || json.songtitle || json.currentlisteners != null) {
+    let src = null;
+    if (json.streams) {
+      let s = json.streams.stream || json.streams;
+      if (Array.isArray(s)) src = s[0];
+      else if (typeof s === "object") src = s;
+    } else {
+      src = json;
+    }
+
+    const out = {};
+    if (src) {
+      if (src.bitrate) { const n = parseInt(src.bitrate, 10); if (!isNaN(n)) out.bitrate = n; }
+      if (src.currentlisteners != null) { const n = parseInt(src.currentlisteners, 10); if (!isNaN(n)) out.listeners = n; }
+      if (src.peaklisteners != null) { const n = parseInt(src.peaklisteners, 10); if (!isNaN(n)) out.peakListeners = n; } // Added peak listeners
+      if (src.servergenre) out.genre = src.servergenre;
+      if (src.servertitle) out.stationName = src.servertitle;
+      if (src.songtitle) out.title = src.songtitle;
+      if (src.contenttype) out.codec = mapContentTypeToCodec(String(src.contenttype));
+      if (src.streamhits != null) out.streamHits = src.streamhits; // Added stream hits
+      if (src.streamuptime) out.streamUptime = src.streamuptime; // Added stream uptime
+    }
+    return out;
+  }
+
+  // --- More generic JSON parsing, looking for common keys ---
+  const findValue = (obj, keys, isNum = false) => {
+    if (!obj) return null;
+    for (const key of keys) {
+      const val = obj[key];
+      if (val != null) {
+        if (isNum) {
+          const n = parseInt(val, 10);
+          return !isNaN(n) ? n : null;
+        }
+        return String(val);
+      }
+    }
+    return null;
+  };
+
+  const out = {};
+  out.title = findValue(json, ['title', 'song', 'current_song', 'now_playing', 'track']);
+  out.artist = findValue(json, ['artist', 'current_artist']);
+  if (!out.title && out.artist && findValue(json, ['album'])) { // Construct title if only artist and album
+      out.title = `${out.artist} - ${findValue(json, ['album'])}`;
+  } else if (!out.title && out.artist && findValue(json, ['song'])) { // Construct title if only artist and song
+      out.title = `${out.artist} - ${findValue(json, ['song'])}`;
+  }
+
+  out.stationName = findValue(json, ['station_name', 'name', 'radio_name', 'stream_name']);
+  out.listeners = findValue(json, ['listeners', 'current_listeners', 'clients'], true);
+  out.bitrate = findValue(json, ['bitrate', 'kbps'], true);
+  out.genre = findValue(json, ['genre', 'categories']);
+  out.server = findValue(json, ['server_software', 'server']);
+  out.codec = mapContentTypeToCodec(findValue(json, ['content_type', 'format'])) || findValue(json, ['codec']);
+  out.description = findValue(json, ['description', 'about']);
+  out.website = findValue(json, ['website', 'homepage', 'url']);
+
+  // If a generic title was found, prioritize it.
+  if (out.title) {
+      // If we found an artist separately, combine them
+      if (out.artist && !out.title.toLowerCase().includes(out.artist.toLowerCase())) {
+          out.title = `${out.artist} - ${out.title}`;
+      }
+      return out;
+  }
+
+  return null;
+}
+</script>

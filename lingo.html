@@ -1,0 +1,1151 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>LingoFlash AI - Standalone</title>
+    
+    <!-- Polyfills for older browsers (iOS 12 / Legacy Chrome) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.37.1/minified.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM (UMD) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel Standalone (for JSX) with env preset for ES5 compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f3f4f6;
+        /* Prevent elastic scrolling on iOS */
+        overscroll-behavior-y: none;
+      }
+      /* Hide scrollbar */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      
+      /* Animations */
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+
+      /* iOS Safari Viewport Fix */
+      @supports (-webkit-touch-callout: none) {
+        .min-h-screen {
+          min-height: -webkit-fill-available;
+        }
+      }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- MAIN APPLICATION CODE -->
+    <!-- data-presets="env,react" ensures compilation to ES5 for older browsers -->
+    <script type="text/babel" data-presets="env,react">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // ==========================================
+        // 1. DATA & CONSTANTS
+        // ==========================================
+        
+        const DICTIONARY_TYPES = {
+            CORE: 'Core Vocabulary (High Freq)',
+            CET4: 'CET-4 (University)',
+            TOEFL: 'TOEFL (Academic)',
+        };
+
+        const STATIC_LIBRARY = {
+            [DICTIONARY_TYPES.CORE]: [
+                { id: '1', word: 'motivate', phonetic: "['məutiveit]", meaning: 'vt.驱使，激发', example: 'The coach gave a speech to motivate the team.', exampleTranslation: '教练发表了讲话来激励队员。' },
+                { id: '2', word: 'plastic', phonetic: "[ˈplæstik]", meaning: 'n./adj.塑料', example: 'We should reduce the use of plastic bags.', exampleTranslation: '我们要减少塑料袋的使用。' },
+                { id: '3', word: 'positive', phonetic: "[ˈpɔzətiv]", meaning: 'adj.积极的，肯定的', example: 'Keep a positive attitude even when things are hard.', exampleTranslation: '即使困难重重，也要保持积极的态度。' },
+                { id: '4', word: 'physical', phonetic: "[ˈfizikəl]", meaning: 'adj.身体的，物理的', example: 'Regular physical exercise is good for your health.', exampleTranslation: '规律的体育锻炼对你的健康有益。' },
+                { id: '5', word: 'reduce', phonetic: "[ri'dju:s]", meaning: 'v.减少，缩小', example: 'We need to reduce our daily expenses.', exampleTranslation: '我们需要减少日常开支。' },
+                { id: '6', word: 'performance', phonetic: "[pə'fɔ:məns]", meaning: 'n.表现，表演', example: 'Her performance in the play was excellent.', exampleTranslation: '她在剧中的表现非常出色。' },
+                { id: '7', word: 'emotional', phonetic: "[iˈməuʃənəl]", meaning: 'adj.情感的，情绪的', example: 'The movie was so emotional that I cried.', exampleTranslation: '这部电影太感人了，我都哭了。' },
+                { id: '8', word: 'participant', phonetic: "[pɑ:ˈtisipənt]", meaning: 'n.参加者', example: 'Every participant received a small gift.', exampleTranslation: '每位参与者都收到了一份小礼物。' },
+                { id: '9', word: 'view', phonetic: "[vju:]", meaning: 'n./vt.风景，视野，见解；观看', example: 'The hotel room has a beautiful ocean view.', exampleTranslation: '这个酒店房间有美丽的海景。' },
+                { id: '10', word: 'cooperate', phonetic: "[kəuˈɔpəreit]", meaning: 'vi.合作，配合', example: 'We must cooperate to finish the project on time.', exampleTranslation: '我们必须合作才能按时完成项目。' },
+                { id: '11', word: 'negative', phonetic: "[ˈnegətiv]", meaning: 'adj.负面的，消极的，否定的', example: "Don't focus on the negative comments.", exampleTranslation: '不要关注那些负面的评论。' },
+                { id: '12', word: 'pressure', phonetic: "['preʃə(r)]", meaning: 'n.压力', example: 'She works well under pressure.', exampleTranslation: '她在压力下工作得很好。' },
+                { id: '13', word: 'failure', phonetic: "[ˈfeiljə(r)]", meaning: 'n.失败', example: 'Failure is often the first step to success.', exampleTranslation: '失败往往是成功的第一步。' },
+                { id: '14', word: 'garbage', phonetic: "[ˈgɑ:bidʒ]", meaning: 'n.垃圾', example: 'Please take out the garbage before you leave.', exampleTranslation: '离开前请把垃圾带出去。' },
+                { id: '15', word: 'journal', phonetic: "[ˈdʒə:nəl]", meaning: 'n.杂志，期刊，日志', example: 'She writes in her journal every night.', exampleTranslation: '她每天晚上都写日记。' },
+                { id: '16', word: 'device', phonetic: "[diˈvais]", meaning: 'n.设备', example: 'This electronic device tracks your steps.', exampleTranslation: '这个电子设备记录你的步数。' },
+                { id: '17', word: 'literature', phonetic: "[ˈlitərətʃə]", meaning: 'n.文学，文学作品', example: 'He is studying English literature at university.', exampleTranslation: '他在大学学习英国文学。' },
+                { id: '18', word: 'bacteria', phonetic: "[bækˈtiəriə]", meaning: 'n.细菌', example: 'Washing hands kills harmful bacteria.', exampleTranslation: '洗手可以杀死有害细菌。' },
+                { id: '19', word: 'landfill', phonetic: "[ˈlændfil]", meaning: 'n.垃圾填埋场', example: 'Much of our waste ends up in a landfill.', exampleTranslation: '我们的大部分垃圾最终都会进入垃圾填埋场。' },
+                { id: '20', word: 'personality', phonetic: "[pərsə'næləti]", meaning: 'n.性格，个性；特色，特征', example: 'He has a very cheerful personality.', exampleTranslation: '他的性格非常开朗。' },
+                { id: '21', word: 'solution', phonetic: "[səˈlu:ʃən]", meaning: 'n.解决办法，答案', example: 'We need to find a solution to this problem.', exampleTranslation: '我们需要找到这个问题的解决方案。' },
+                { id: '22', word: 'affect', phonetic: "[ə'fekt]", meaning: 'vt.影响，感动，侵袭', example: 'The weather can affect your mood.', exampleTranslation: '天气会影响你的心情。' },
+                { id: '23', word: 'average', phonetic: "[ˈævəridʒ]", meaning: 'n./adj.平均数，平均水平；平均的', example: 'His height is above average.', exampleTranslation: '他的身高在平均水平以上。' },
+                { id: '24', word: 'comfort', phonetic: "[ˈkʌmfət]", meaning: 'n./vt.舒适，安慰', example: 'The new sofa offers great comfort.', exampleTranslation: '新沙发非常舒适。' },
+                { id: '25', word: 'connection', phonetic: "[kəˈnekʃən]", meaning: 'n.联系，连接', example: 'The internet connection is very slow today.', exampleTranslation: '今天的网络连接很慢。' },
+                { id: '26', word: 'quality', phonetic: "['kwɔləti]", meaning: 'n.质量，品质，性质', example: 'They value quality over quantity.', exampleTranslation: '他们看重质量胜过数量。' },
+                { id: '27', word: 'violent', phonetic: "[ˈvaiələnt]", meaning: 'adj.猛烈的，暴力的', example: 'I do not like watching violent movies.', exampleTranslation: '我不喜欢看暴力的电影。' },
+                { id: '28', word: 'generate', phonetic: "[ˈdʒenəreit]", meaning: 'vt.产生，引起', example: 'Solar panels generate electricity from the sun.', exampleTranslation: '太阳能电池板利用太阳产生电力。' },
+                { id: '29', word: 'publish', phonetic: "[ˈpʌbliʃ]", meaning: 'v.出版', example: 'The author will publish a new book soon.', exampleTranslation: '这位作者很快就要出版一本新书。' },
+                { id: '30', word: 'effective', phonetic: "[iˈfektiv]", meaning: 'adj.有效的', example: 'This medicine is very effective against the flu.', exampleTranslation: '这种药对流感非常有效。' },
+                { id: '31', word: 'gossip', phonetic: "[ˈgɔsip]", meaning: 'n.流言蜚语', example: 'It is not polite to gossip about others.', exampleTranslation: '八卦别人是不礼貌的。' },
+                { id: '32', word: 'intelligence', phonetic: "[in'telidʒəns]", meaning: 'n.智力，聪明，智能', example: 'Artificial intelligence is changing the world.', exampleTranslation: '人工智能正在改变世界。' },
+                { id: '33', word: 'reality', phonetic: "[ri'æləti]", meaning: 'n.真实，事实，现实', example: 'You need to face reality.', exampleTranslation: '你需要面对现实。' },
+                { id: '34', word: 'exploration', phonetic: "[ˌekspləˈreiʃn]", meaning: 'n.探索，探究', example: 'Space exploration requires advanced technology.', exampleTranslation: '太空探索需要先进的技术。' },
+                { id: '35', word: 'species', phonetic: "[ 'spi:ʃi:z]", meaning: 'n.种类，物种', example: 'Many bird species migrate in winter.', exampleTranslation: '许多鸟类物种在冬天迁徙。' },
+                { id: '36', word: 'cognitive', phonetic: "[ˈkɔgnitiv]", meaning: 'adj.认知的', example: 'Puzzles can improve cognitive skills.', exampleTranslation: '拼图可以提高认知能力。' },
+                { id: '37', word: 'compete', phonetic: "[kəmˈpi:t]", meaning: 'vi.竞争，比赛', example: 'Athletes compete for the gold medal.', exampleTranslation: '运动员们争夺金牌。' },
+                { id: '38', word: 'disease', phonetic: "[diˈzi:z]", meaning: 'n.疾病', example: 'Vaccines help prevent serious disease.', exampleTranslation: '疫苗有助于预防严重的疾病。' },
+                { id: '39', word: 'evidence', phonetic: "['evidəns]", meaning: 'n.证据', example: 'There is no evidence to support his claim.', exampleTranslation: '没有证据支持他的说法。' },
+                { id: '40', word: 'memorize', phonetic: "[ˈmeməraiz]", meaning: 'v.记住', example: 'You need to memorize these vocabulary words.', exampleTranslation: '你需要背下这些词汇。' },
+                { id: '41', word: 'recycle', phonetic: "[ˌri:ˈsaikəl]", meaning: 'vt.回收', example: 'We should recycle paper and glass bottles.', exampleTranslation: '我们应该回收纸张和玻璃瓶。' },
+                { id: '42', word: 'resource', phonetic: "[riˈsɔ:s]", meaning: 'n.资源', example: 'Water is a precious natural resource.', exampleTranslation: '水是一种宝贵的自然资源。' },
+                { id: '43', word: 'argument', phonetic: "[ˈɑ:gju:mənt]", meaning: 'n.争论(吵)，辩论，理由，论证', example: 'They had a heated argument about politics.', exampleTranslation: '他们关于政治发生了一场激烈的争论。' },
+                { id: '44', word: 'esteem', phonetic: "[iˈsti:m]", meaning: 'n./vt.尊重，敬重；把…看作，认为', example: 'He holds his teacher in high esteem.', exampleTranslation: '他非常尊敬他的老师。' },
+                { id: '45', word: 'injury', phonetic: "[ˈindʒəri]", meaning: 'n.伤害', example: 'The player suffered a knee injury.', exampleTranslation: '那名球员膝盖受了伤。' },
+                { id: '46', word: 'powerful', phonetic: "['pauəful]", meaning: 'adj.强大的，有权力的', example: 'The car has a very powerful engine.', exampleTranslation: '这辆车有一个非常强劲的引擎。' },
+                { id: '47', word: 'throughout', phonetic: "[θruːˈaʊt]", meaning: 'prep./adv.遍及，贯穿；始终', example: 'It rained throughout the day.', exampleTranslation: '一整天都在下雨。' },
+                { id: '48', word: 'appreciate', phonetic: "[ə'pri:ʃieit]", meaning: 'vt.欣赏，感激，理解', example: 'I really appreciate your help.', exampleTranslation: '我真的很感激你的帮助。' },
+                { id: '49', word: 'gratitude', phonetic: "[ˈgrætitju:d]", meaning: 'n.感激', example: 'She smiled to show her gratitude.', exampleTranslation: '她微笑着表示感激。' },
+                { id: '50', word: 'limited', phonetic: "['limitid]", meaning: 'adj.有限的', example: 'Seats are limited, so book early.', exampleTranslation: '座位有限，请尽早预订。' },
+                { id: '51', word: 'mental', phonetic: "[ˈmentl]", meaning: 'adj.精神的，心理的', example: 'Mental health is as important as physical health.', exampleTranslation: '心理健康和身体健康一样重要。' },
+                { id: '52', word: 'outcome', phonetic: "[ˈautkʌm]", meaning: 'n.结果', example: 'We are waiting for the outcome of the election.', exampleTranslation: '我们在等待选举的结果。' },
+                { id: '53', word: 'reward', phonetic: "[ri'wɔ:d]", meaning: 'n./vt.报酬，酬劳；奖赏', example: 'Success is the reward for hard work.', exampleTranslation: '成功是对努力工作的回报。' },
+                { id: '54', word: 'beneficial', phonetic: "[ˌbeniˈfiʃəl]", meaning: 'adj.有益的，有利的', example: 'Reading is beneficial to your mind.', exampleTranslation: '阅读有益于你的头脑。' },
+                { id: '55', word: 'biological', phonetic: "[ˌbaiəˈlɔdʒikəl]", meaning: 'adj.生物学的', example: 'He met his biological parents for the first time.', exampleTranslation: '他第一次见到了他的亲生父母。' },
+                { id: '56', word: 'conclude', phonetic: "[kənˈklu:d]", meaning: 'v.得出结论，（使）结束', example: 'I will conclude my speech with a quote.', exampleTranslation: '我将用一句名言来结束我的演讲。' },
+                { id: '57', word: 'define', phonetic: "[diˈfain]", meaning: 'vt.阐明，限定；给…下定义', example: 'It is difficult to define the meaning of love.', exampleTranslation: '很难定义爱的含义。' },
+                { id: '58', word: 'package', phonetic: "[ˈpækidʒ]", meaning: 'n.包裹', example: 'The mailman delivered a large package.', exampleTranslation: '邮递员送来了一个大包裹。' },
+                { id: '59', word: 'psychological', phonetic: "[ˌsaikəˈlɒdʒikl]", meaning: 'adj.心理的；精神上的；心理学的', example: 'Stress can cause psychological problems.', exampleTranslation: '压力会导致心理问题。' },
+                { id: '60', word: 'recall', phonetic: "[riˈkɔ(:)l]", meaning: 'v.记起，召回', example: 'I cannot recall where I put my keys.', exampleTranslation: '我想不起把钥匙放哪儿了。' },
+                { id: '61', word: 'recipe', phonetic: "['resəpi]", meaning: 'n.食谱，处方，秘诀', example: 'This cake recipe is easy to follow.', exampleTranslation: '这个蛋糕食谱很容易学。' },
+                { id: '62', word: 'replace', phonetic: "[ri'pleis]", meaning: 'vt.代替', example: 'You need to replace the batteries in the remote.', exampleTranslation: '你需要更换遥控器里的电池。' },
+                { id: '63', word: 'respond', phonetic: "[riˈspɒnd]", meaning: 'v.反映，回应', example: 'Please respond to my email as soon as possible.', exampleTranslation: '请尽快回复我的邮件。' },
+                { id: '64', word: 'status', phonetic: "[ˈsteitəs]", meaning: 'n.地位，身份，状态', example: 'What is the current status of the project?', exampleTranslation: '项目目前的状况如何？' },
+                { id: '65', word: 'strengthen', phonetic: "[ˈstreŋθən]", meaning: 'v.加强，巩固', example: 'Exercise helps to strengthen your muscles.', exampleTranslation: '运动有助于增强你的肌肉。' },
+                { id: '66', word: 'stressed', phonetic: "[strest]", meaning: 'adj.焦虑不安的；心力交瘁的', example: 'I feel very stressed about the upcoming exam.', exampleTranslation: '我对即将到来的考试感到非常有压力。' },
+                { id: '67', word: 'unlock', phonetic: "[ˌʌnˈlɒk]", meaning: 'vt.开…的锁；揭示', example: 'Use the key to unlock the door.', exampleTranslation: '用钥匙打开门锁。' },
+                { id: '68', word: 'willing', phonetic: "[ˈwiliŋ]", meaning: 'adj.愿意的，乐意的', example: 'I am willing to help you move house.', exampleTranslation: '我愿意帮你搬家。' },
+                { id: '69', word: 'challenging', phonetic: "[tʃ'ælindʒiŋ]", meaning: 'adj.有挑战性的', example: 'The puzzle was difficult and challenging.', exampleTranslation: '这个拼图很难，具有挑战性。' },
+                { id: '70', word: 'detail', phonetic: "[ˈdi:teil]", meaning: 'n.细节', example: 'Please explain the plan in detail.', exampleTranslation: '请详细解释一下这个计划。' },
+                { id: '71', word: 'digital', phonetic: "['didʒitəl]", meaning: 'adj.数字式的', example: 'We live in a digital age.', exampleTranslation: '我们生活在数字时代。' },
+                { id: '72', word: 'discipline', phonetic: "['disiplin]", meaning: 'n./v.学科，纪律；管教', example: 'Learning a new language requires discipline.', exampleTranslation: '学习一门新语言需要自律。' },
+                { id: '73', word: 'exposure', phonetic: "[ik'spəuʒə]", meaning: 'n.暴露，显露，揭露', example: 'Too much sun exposure can damage your skin.', exampleTranslation: '过多的阳光暴晒会伤害皮肤。' },
+                { id: '74', word: 'literacy', phonetic: "[ˈlitərəsi]", meaning: 'n.识字；有文化', example: 'The government is trying to improve literacy rates.', exampleTranslation: '政府正在努力提高识字率。' },
+                { id: '75', word: 'overweight', phonetic: "[ˌəʊvəˈweit]", meaning: 'n.超重', example: 'Lack of exercise can cause you to become overweight.', exampleTranslation: '缺乏锻炼会导致超重。' },
+                { id: '76', word: 'tend', phonetic: "[tend]", meaning: 'v.倾向，照料', example: 'He tends to be late for meetings.', exampleTranslation: '他开会倾向于迟到（往往会迟到）。' },
+                { id: '77', word: 'track', phonetic: "[træk]", meaning: 'n./vt.踪迹，轨道，跑道，小径；跟踪', example: 'You can track your package online.', exampleTranslation: '你可以在线追踪你的包裹。' },
+                { id: '78', word: 'transportation', phonetic: "[ˌtrænspɔːˈteiʃn]", meaning: 'n.运输', example: 'Public transportation in this city is convenient.', exampleTranslation: '这个城市的公共交通很方便。' },
+                { id: '79', word: 'athlete', phonetic: "['æθli:t]", meaning: 'n.运动员', example: 'He is a professional athlete.', exampleTranslation: '他是一名职业运动员。' },
+                { id: '80', word: 'climate', phonetic: "[ˈklaimət]", meaning: 'n.气候', example: 'Climate change is a global issue.', exampleTranslation: '气候变化是一个全球性问题。' },
+                { id: '81', word: 'desire', phonetic: "[diˈzaiə(r)]", meaning: 'n./v.渴望，要求', example: 'She has a strong desire to travel the world.', exampleTranslation: '她有环游世界的强烈愿望。' },
+                { id: '82', word: 'distance', phonetic: "['distəns]", meaning: 'n.距离', example: 'The distance between the two cities is far.', exampleTranslation: '这两个城市之间的距离很远。' },
+                { id: '83', word: 'exist', phonetic: "[ig'zist]", meaning: 'v.存在，生存', example: 'Do you believe that ghosts exist?', exampleTranslation: '你相信鬼魂存在吗？' },
+                { id: '84', word: 'function', phonetic: "['fʌŋkʃən]", meaning: 'n./vi 功能，机能，函数；运转，起作用', example: 'The main function of the heart is to pump blood.', exampleTranslation: '心脏的主要功能是泵血。' },
+                { id: '85', word: 'gradual', phonetic: "['ɡrædʒuəl]", meaning: 'adj.逐渐的', example: 'The recovery process was gradual but steady.', exampleTranslation: '康复过程是渐进的，但很稳定。' },
+                { id: '86', word: 'inspire', phonetic: "[inˈspaiə]", meaning: 'vt.鼓舞，给…以灵感', example: 'His story will inspire many young people.', exampleTranslation: '他的故事将激励许多年轻人。' },
+                { id: '87', word: 'potential', phonetic: "[pəˈtenʃəl]", meaning: 'n./adj.潜能，可能性；可能的，潜在的', example: 'The new employee has great potential.', exampleTranslation: '这位新员工有很大的潜力。' },
+                { id: '88', word: 'procrastinate', phonetic: "[prəuˈkræstineit]", meaning: 'v.耽搁，拖延', example: "Don't procrastinate on your homework.", exampleTranslation: '做作业不要拖延。' },
+                { id: '89', word: 'puzzle', phonetic: "['pʌzl]", meaning: 'n./v.谜；迷惑，使困惑', example: 'I am trying to solve a crossword puzzle.', exampleTranslation: '我正在试图解开一个填字游戏（谜题）。' },
+                { id: '90', word: 'signal', phonetic: "['siɡnəl]", meaning: 'n./v.信号；发信号，表明', example: 'The red light is a signal to stop.', exampleTranslation: '红灯是停止的信号。' },
+                { id: '91', word: 'structure', phonetic: "[ˈstrʌktʃə]", meaning: 'n.结构', example: 'The structure of the building is very safe.', exampleTranslation: '这栋建筑的结构很安全。' },
+                { id: '92', word: 'theory', phonetic: "[ˈθiəri]", meaning: 'n.理论', example: 'It is just a theory, not a proven fact.', exampleTranslation: '这只是一个理论，不是被证实的事实。' },
+                { id: '93', word: 'variety', phonetic: "[və'raiəti]", meaning: 'n.多样性，种类', example: 'The shop sells a wide variety of fruits.', exampleTranslation: '这家店出售各种各样的水果。' },
+                { id: '94', word: 'available', phonetic: "[ə'veiləbəl]", meaning: 'adj.可用的，可得到的，有空的', example: 'Is this seat available?', exampleTranslation: '这个座位有人坐吗（空闲吗）？' },
+                { id: '95', word: 'boredom', phonetic: "[ˈbɔːdəm]", meaning: 'n.无聊', example: 'She started drawing out of boredom.', exampleTranslation: '她因为无聊开始画画。' },
+                { id: '96', word: 'charity', phonetic: "[ˈtʃæriti]", meaning: 'n.慈善团体', example: 'He donated a lot of money to charity.', exampleTranslation: '他向慈善机构捐了很多钱。' },
+                { id: '97', word: 'combine', phonetic: "[kəm'bain]", meaning: 'vt.联合，结合', example: 'Combine the flour and sugar in a bowl.', exampleTranslation: '把面粉和糖在碗里混合。' },
+                { id: '98', word: 'confused', phonetic: "[kənˈfju:zd]", meaning: 'adj.糊涂的，迷惑的', example: 'I was confused by the complicated instructions.', exampleTranslation: '复杂的说明书让我感到困惑。' },
+                { id: '99', word: 'escape', phonetic: "[i'skeip]", meaning: 'vi.逃脱，逃走', example: 'The bird tried to escape from the cage.', exampleTranslation: '鸟儿试图从笼子里逃脱。' },
+                { id: '100', word: 'exchange', phonetic: "[iks'tʃeindʒ]", meaning: 'n./vt.外汇，兑换，交换，交流', example: 'We can exchange phone numbers later.', exampleTranslation: '我们稍后可以交换电话号码。' },
+                { id: '101', word: 'expand', phonetic: "[ik'spænd]", meaning: 'v.扩大，扩展', example: 'The company plans to expand its business.', exampleTranslation: '公司计划扩展其业务。' },
+                { id: '102', word: 'expression', phonetic: "[ikˈspreʃn]", meaning: 'n.词语，表示，表达', example: 'Her facial expression showed surprise.', exampleTranslation: '她的面部表情流露出了惊讶。' },
+                { id: '103', word: 'increasingly', phonetic: "[inˈkriːsiŋli]", meaning: 'adv.越来越多地，不断增加地', example: 'It is becoming increasingly difficult to find parking.', exampleTranslation: '找停车位变得越来越难了。' },
+                { id: '104', word: 'loneliness', phonetic: "[ˈləunliniz]", meaning: 'n.孤独，寂寞', example: 'He felt a deep sense of loneliness.', exampleTranslation: '他感到一种深深的孤独感。' },
+                { id: '105', word: 'movement', phonetic: "['mu:vmənt]", meaning: 'n.运动，动作，活动', example: 'The movement of the dancer was graceful.', exampleTranslation: '舞者的动作很优美。' },
+                { id: '106', word: 'observe', phonetic: "[əb'zə:v]", meaning: 'v.观察，遵守，庆祝', example: 'Scientists observe the stars through telescopes.', exampleTranslation: '科学家通过望远镜观察星星。' },
+                { id: '107', word: 'option', phonetic: "[ˈɔpʃən]", meaning: 'n.选择', example: 'You have the option to cancel at any time.', exampleTranslation: '你有选择随时取消的权利。' },
+                { id: '108', word: 'particular', phonetic: "[pə'tikjulə]", meaning: 'adj.特别的，讲究的，挑剔的', example: 'I am looking for a particular book.', exampleTranslation: '我在找一本特定的书。' },
+                { id: '109', word: 'reaction', phonetic: "[ri(:)'ækʃən]", meaning: 'n.反应，化学反应', example: 'His immediate reaction was anger.', exampleTranslation: '他的第一反应是愤怒。' },
+                { id: '110', word: 'charge', phonetic: "[tʃɑ:dʒ]", meaning: 'vt.收费，管理，充电，冲刺，控告', example: 'Please charge your phone before we leave.', exampleTranslation: '出发前请给你的手机充电。' },
+                { id: '111', word: 'competence', phonetic: "[ˈkɔmpitəns]", meaning: 'n.能力', example: 'The job requires a high level of competence.', exampleTranslation: '这份工作需要高水平的能力。' },
+                { id: '112', word: 'concentrate', phonetic: "[ˈkɔnsəntreit]", meaning: 'v.集中', example: 'I cannot concentrate with that noise.', exampleTranslation: '噪音那么大我无法集中注意力。' },
+                { id: '113', word: 'consume', phonetic: "[kənˈsju:m]", meaning: 'vt.消耗，消费', example: 'Cars consume a lot of fuel.', exampleTranslation: '汽车消耗大量燃料。' },
+                { id: '114', word: 'critical', phonetic: "[ˈkritikəl]", meaning: 'adj.关键性的，批评的', example: 'It is critical to finish this today.', exampleTranslation: '今天完成这项工作至关重要。' },
+                { id: '115', word: 'decrease', phonetic: "[diˈkriːs]", meaning: 'v./n.减少，降低', example: 'We must decrease pollution levels.', exampleTranslation: '我们必须降低污染水平。' },
+                { id: '116', word: 'ecology', phonetic: "[iˈkɒlədʒi]", meaning: 'n.生态', example: 'Pollution harms the fragile ecology.', exampleTranslation: '污染损害脆弱的生态。' },
+                { id: '117', word: 'enrich', phonetic: "[inˈritʃ]", meaning: 'n./vt.使丰富', example: 'Reading can enrich your life.', exampleTranslation: '阅读可以丰富你的生活。' },
+                { id: '118', word: 'evaluate', phonetic: "[iˈvæljueit]", meaning: 'vt.评价，评估', example: 'The teacher will evaluate your progress.', exampleTranslation: '老师会评估你的进步。' },
+                { id: '119', word: 'exhibit', phonetic: "[ig'zibit]", meaning: 'n./vt.展品，展览；表现，显出', example: 'The museum will exhibit ancient artifacts.', exampleTranslation: '博物馆将展出古代文物。' },
+                { id: '120', word: 'extracurricular', phonetic: "[ˌekstrəkə'rɪkjʊlə]", meaning: 'adj.课外的', example: 'She participates in many extracurricular activities.', exampleTranslation: '她参加许多课外活动。' },
+                { id: '121', word: 'independent', phonetic: "[ˌindiˈpendənt]", meaning: 'adj.独立的，不相关的', example: 'He wants to be financially independent.', exampleTranslation: '他想在经济上独立。' },
+                { id: '122', word: 'interact', phonetic: "[ˌintə'rækt]", meaning: 'vi.互动，相互作用', example: 'Children learn how to interact with others at school.', exampleTranslation: '孩子们在学校学习如何与他人互动。' },
+                { id: '123', word: 'layer', phonetic: "[ˈleiə(r)]", meaning: 'n./v.（分）层次', example: 'The cake has a layer of chocolate inside.', exampleTranslation: '蛋糕里面有一层巧克力。' },
+                { id: '124', word: 'major', phonetic: "['meidʒə]", meaning: 'n./adj./vi.主修，主修科目；主要的', example: 'Pollution is a major problem in big cities.', exampleTranslation: '污染是大城市的主要问题。' },
+                { id: '125', word: 'pattern', phonetic: "['pætən]", meaning: 'n.图案，样式，模式，榜样', example: 'The shirt has a striped pattern.', exampleTranslation: '这件衬衫有条纹图案。' },
+                { id: '126', word: 'popularity', phonetic: "[ˌpɔpjuˈlæriti]", meaning: 'n.受欢迎，普及', example: 'The game is gaining popularity rapidly.', exampleTranslation: '这个游戏正迅速获得人气。' },
+                { id: '127', word: 'practical', phonetic: "[ˈpræktikəl]", meaning: 'adj.实用的，实际的', example: 'We need a practical solution.', exampleTranslation: '我们需要一个切合实际的解决方案。' },
+                { id: '128', word: 'priority', phonetic: "[praiˈɔrəti]", meaning: 'n.优先事项，优先(权)', example: 'Safety is our top priority.', exampleTranslation: '安全是我们的首要任务。' },
+                { id: '129', word: 'privacy', phonetic: "[ˈpraivəsi]", meaning: 'n.隐私', example: 'Please respect my privacy.', exampleTranslation: '请尊重我的隐私。' },
+                { id: '130', word: 'productive', phonetic: "[prəˈdʌktiv]", meaning: 'adj.多产的', example: 'We had a very productive meeting.', exampleTranslation: '我们开了一个非常有成效的会议。' },
+                { id: '131', word: 'routine', phonetic: "[ru:ˈti:n]", meaning: 'n.常规', example: 'Morning exercise is part of my routine.', exampleTranslation: '晨练是我例行公事的一部分。' },
+                { id: '132', word: 'sacrifice', phonetic: "[ˈsækrifais]", meaning: 'n./vt.牺牲，祭祀，祭品', example: 'Parents often sacrifice for their children.', exampleTranslation: '父母经常为孩子牺牲。' },
+                { id: '133', word: 'socialize', phonetic: "[ˈsəʊʃəlaiz]", meaning: 'vt.（和他人）交往，交际', example: 'Parties are a good place to socialize.', exampleTranslation: '聚会是社交的好地方。' },
+                { id: '134', word: 'storage', phonetic: "[ˈstɔːridʒ]", meaning: 'n.贮藏，仓库', example: 'My phone is running out of storage.', exampleTranslation: '我的手机存储空间快用完了。' },
+                { id: '135', word: 'struggle', phonetic: "['strʌɡl]", meaning: 'n./v.挣扎', example: 'It was a struggle to get out of bed.', exampleTranslation: '起床是一番挣扎。' },
+                { id: '136', word: 'switch', phonetic: "[switʃ]", meaning: 'n./v.开关，转变', example: 'Please switch off the lights.', exampleTranslation: '请关灯。' },
+                { id: '137', word: 'trash', phonetic: "[træʃ]", meaning: 'n.垃圾', example: "Don't throw trash on the street.", exampleTranslation: '不要在街上乱扔垃圾。' },
+                { id: '138', word: 'trick', phonetic: "[trik]", meaning: 'n./vt.诡计，把戏，诀窍；欺骗', example: 'The magician performed a card trick.', exampleTranslation: '魔术师表演了一个纸牌戏法。' },
+                { id: '139', word: 'trustworthy', phonetic: "[ˈtrʌstwɜ:ði]", meaning: 'adj.值得信任的，可靠的', example: 'He is a hardworking and trustworthy employee.', exampleTranslation: '他是一个勤奋且值得信赖的员工。' },
+                { id: '140', word: 'virtual', phonetic: "['və:tʃuəl]", meaning: 'adj.虚拟的', example: 'We will hold a virtual meeting online.', exampleTranslation: '我们将在线举行虚拟会议。' },
+                { id: '141', word: 'access', phonetic: "[ˈækses]", meaning: 'n./v.通道、路径，机会', example: 'I do not have access to that file.', exampleTranslation: '我无法访问那个文件。' },
+                { id: '142', word: 'adapt', phonetic: "[ə'dæpt]", meaning: 'vt.改编，适应', example: 'Animals must adapt to their environment.', exampleTranslation: '动物必须适应环境。' },
+                { id: '143', word: 'attack', phonetic: "[ə'tæk]", meaning: 'n./vt.攻击', example: 'The dog might attack if you run.', exampleTranslation: '如果你跑，狗可能会攻击你。' },
+                { id: '144', word: 'carbon', phonetic: "['kɑ:bən]", meaning: 'n.碳', example: 'Trees absorb carbon dioxide.', exampleTranslation: '树木吸收二氧化碳。' },
+                { id: '145', word: 'damage', phonetic: "['dæmidʒ]", meaning: 'n./vt.损失，损害', example: 'The storm caused a lot of damage.', exampleTranslation: '暴风雨造成了很大的破坏。' },
+                { id: '146', word: 'display', phonetic: "[disˈplei]", meaning: 'vt./n.陈列，展出', example: 'The store put the new clothes on display.', exampleTranslation: '商店把新衣服展示出来。' },
+                { id: '147', word: 'distract', phonetic: "[diˈstrækt]", meaning: 'vt.使分心', example: "Don't let the noise distract you.", exampleTranslation: '别让噪音分散你的注意力。' },
+                { id: '148', word: 'equipment', phonetic: "[iˈkwipmənt]", meaning: 'n.装备，器材', example: 'You need special equipment for diving.', exampleTranslation: '潜水需要特殊的装备。' },
+                { id: '149', word: 'external', phonetic: "[ikˈstə:nəl]", meaning: 'adj.外部的', example: 'The cream is for external use only.', exampleTranslation: '这种药膏仅供外用。' },
+                { id: '150', word: 'feedback', phonetic: "[ˈfi:dbæk]", meaning: 'n.反馈', example: 'We welcome your feedback on our service.', exampleTranslation: '我们欢迎您对我们服务的反馈。' },
+                { id: '151', word: 'freedom', phonetic: "['fri:dəm]", meaning: 'n.自由', example: 'Everyone values their freedom.', exampleTranslation: '每个人都珍视自己的自由。' },
+                { id: '152', word: 'indicator', phonetic: "[ˈindikeitə(r)]", meaning: 'n.指示信号，标志，迹象，指示器', example: 'High fever is an indicator of infection.', exampleTranslation: '高烧是感染的指标。' },
+                { id: '153', word: 'intake', phonetic: "[ˈinteik]", meaning: 'n.吸收；吸入', example: 'Watch your daily sugar intake.', exampleTranslation: '注意你每天的糖分摄入量。' },
+                { id: '154', word: 'invitation', phonetic: "[invi'teiʃən]", meaning: 'n.邀请，招待', example: 'I received an invitation to the wedding.', exampleTranslation: '我收到了婚礼的请柬。' },
+                { id: '155', word: 'lifestyle', phonetic: "[ˈlaifstail]", meaning: 'n.生活方式', example: 'Regular exercise is part of a healthy lifestyle.', exampleTranslation: '经常锻炼是健康生活方式的一部分。' },
+                { id: '156', word: 'management', phonetic: "['mænidӡmənt]", meaning: 'n.管理', example: 'Good time management is essential.', exampleTranslation: '良好的时间管理至关重要。' },
+                { id: '157', word: 'metal', phonetic: "['metl]", meaning: 'n.金属', example: 'The gate is made of metal.', exampleTranslation: '大门是金属做的。' },
+                { id: '158', word: 'mindful', phonetic: "[ˈmaindfl]", meaning: 'adj.留心的，注意的', example: 'Be mindful of your surroundings.', exampleTranslation: '要留心周围的环境。' },
+                { id: '159', word: 'principle', phonetic: "[ˈprinsəpl]", meaning: 'n.道德原则，行为准则，法则', example: 'It is a matter of principle.', exampleTranslation: '这是一个原则问题。' },
+                { id: '160', word: 'react', phonetic: "[ri'ækt]", meaning: 'vi.反应', example: 'How did he react to the news?', exampleTranslation: '他对这个消息有什么反应？' },
+                { id: '161', word: 'reasonable', phonetic: "['rizənəbəl]", meaning: 'adj.有道理的，合理的', example: 'The price is quite reasonable.', exampleTranslation: '价格很合理。' },
+                { id: '162', word: 'release', phonetic: "[ri'li:s]", meaning: 'n./v.释放，发行，发布', example: 'They will release the movie next month.', exampleTranslation: '他们下个月将上映这部电影。' },
+                { id: '163', word: 'stare', phonetic: "[steə]", meaning: 'n./v.凝视，注视', example: 'It is rude to stare at people.', exampleTranslation: '盯着看人是不礼貌的。' },
+                { id: '164', word: 'strategy', phonetic: "[ˈstrætidʒi]", meaning: 'n.战略，策略', example: 'We need a new marketing strategy.', exampleTranslation: '我们需要一个新的营销策略。' },
+                { id: '165', word: 'transport', phonetic: "['trænspɔ:t]", meaning: 'n./vt.运送，运输', example: 'Trucks transport goods across the country.', exampleTranslation: '卡车在全国各地运输货物。' },
+                { id: '166', word: 'trend', phonetic: "[trend]", meaning: 'n.趋势，潮流', example: 'Fashion trends change every year.', exampleTranslation: '时尚潮流每年都在变。' },
+                { id: '167', word: 'virus', phonetic: "[ˈvairəs]", meaning: 'n.病毒', example: 'The computer has a virus.', exampleTranslation: '这台电脑中了病毒。' },
+                { id: '168', word: 'abuse', phonetic: "[ə'bju:s]", meaning: 'vt.滥用', example: 'We must stop animal abuse.', exampleTranslation: '我们必须停止虐待动物。' },
+                { id: '169', word: 'adventure', phonetic: "[ədˈventʃə]", meaning: 'n.冒险(活动)', example: 'Going to the jungle was a big adventure.', exampleTranslation: '去丛林是一次大冒险。' },
+                { id: '170', word: 'ancestor', phonetic: "[ˈænsestə]", meaning: 'n.祖先', example: 'His ancestors came from Italy.', exampleTranslation: '他的祖先来自意大利。' },
+                { id: '171', word: 'artificial', phonetic: "[ˌɑ:tiˈfiʃəl]", meaning: 'adj.人造的，假的', example: 'Artificial flowers last longer than real ones.', exampleTranslation: '人造花比真花保存得更久。' },
+                { id: '172', word: 'assess', phonetic: "[əˈses]", meaning: 'v.评估', example: 'Experts will assess the damage.', exampleTranslation: '专家将评估损失。' },
+                { id: '173', word: 'assumption', phonetic: "[əˈsʌmpʃən]", meaning: 'n.假定，承担', example: "Don't make an assumption without facts.", exampleTranslation: '没有事实依据不要做假设。' },
+                { id: '174', word: 'audience', phonetic: "[ˈɔ:diəns]", meaning: 'n.听众，观众', example: 'The audience clapped loudly.', exampleTranslation: '观众大声鼓掌。' },
+                { id: '175', word: 'balanced', phonetic: "[ˈbælənst]", meaning: 'adj.平衡的', example: 'You need a balanced diet to stay healthy.', exampleTranslation: '你需要均衡的饮食来保持健康。' },
+                { id: '176', word: 'bargain', phonetic: "[ˈbɑ:ɡin]", meaning: 'n./vt.交易，便宜货；讨价还价', example: 'This dress was a real bargain.', exampleTranslation: '这条裙子真是便宜货。' },
+                { id: '177', word: 'battery', phonetic: "[ˈbætəri]", meaning: 'n.电池', example: 'My phone battery is low.', exampleTranslation: '我的手机电池快没电了。' },
+                { id: '178', word: 'bias', phonetic: "[ˈbaiəs]", meaning: 'n./vt.偏见，成见，偏好，偏爱', example: 'The judge should not show any bias.', exampleTranslation: '法官不应表现出任何偏见。' },
+                { id: '179', word: 'capsule', phonetic: "[ˈkæpsju:l]", meaning: 'n.胶囊，密封舱', example: 'Take one capsule after breakfast.', exampleTranslation: '早餐后服用一粒胶囊。' },
+                { id: '180', word: 'characteristic', phonetic: "[ˌkæriktəˈristik]", meaning: 'n./adj.特性；特有的，典型的', example: 'Stripes are a characteristic of zebras.', exampleTranslation: '条纹是斑马的特征。' },
+                { id: '181', word: 'comment', phonetic: "['kɔment]", meaning: 'n./vi.评论', example: 'Please leave a comment below.', exampleTranslation: '请在下方评论。' },
+                { id: '182', word: 'concept', phonetic: "[ˈkɔnsept]", meaning: 'n.概念', example: 'The concept of time travel is fascinating.', exampleTranslation: '时间旅行的概念很迷人。' },
+                { id: '183', word: 'contain', phonetic: "[kənˈtein]", meaning: 'vt.包含，容纳', example: 'Does this food contain nuts?', exampleTranslation: '这种食物包含坚果吗？' },
+                { id: '184', word: 'decade', phonetic: "[ˈdekeid]", meaning: 'n.十年，十年期', example: 'Trends change every decade.', exampleTranslation: '每十年潮流就会改变。' },
+                { id: '185', word: 'depression', phonetic: "[diˈpreʃn]", meaning: 'n.抑郁，沮丧', example: 'He is suffering from depression.', exampleTranslation: '他患有抑郁症。' },
+                { id: '186', word: 'ecosystem', phonetic: "[ˈi:kəʊsistəm]", meaning: 'n.生态系统', example: 'The coral reef is a diverse ecosystem.', exampleTranslation: '珊瑚礁是一个多样化的生态系统。' },
+                { id: '187', word: 'elementary', phonetic: "[ˌeliˈmentəri]", meaning: 'adj.基本的，初级的', example: 'It is an elementary mistake.', exampleTranslation: '这是一个初级的错误。' },
+                { id: '188', word: 'extreme', phonetic: "[ikˈstri:m]", meaning: 'n./adj.极端；极端的，末端的，尽头的', example: 'They hiked in extreme weather.', exampleTranslation: '他们在极端的天气下徒步旅行。' },
+                { id: '189', word: 'familiar', phonetic: "[fəˈmiliə]", meaning: 'adj.熟悉的', example: 'His face looks familiar.', exampleTranslation: '他的脸看起来很眼熟。' },
+                { id: '190', word: 'fitness', phonetic: "[fitnis]", meaning: 'n.适合，健康', example: 'Swimming is great for overall fitness.', exampleTranslation: '游泳对整体健康很有好处。' },
+                { id: '191', word: 'historical', phonetic: "[hisˈtɔrikəl]", meaning: 'adj.历史(上)的', example: 'We visited many historical sites.', exampleTranslation: '我们参观了许多历史遗迹。' },
+                { id: '192', word: 'ingredient', phonetic: "[inˈɡriːdiənt]", meaning: 'n.组成部分，（烹调的）原料', example: 'Flour is a main ingredient in bread.', exampleTranslation: '面粉是面包的主要原料。' },
+                { id: '193', word: 'insight', phonetic: "[ˈinsait]", meaning: 'n.洞察力，领悟', example: 'The book offers deep insight into history.', exampleTranslation: '这本书提供了对历史的深刻见解。' },
+                { id: '194', word: 'laptop', phonetic: "[ˈlæpˌtɔp]", meaning: 'n.笔记本电脑', example: 'I work on my laptop at the cafe.', exampleTranslation: '我在咖啡馆用笔记本电脑工作。' },
+                { id: '195', word: 'leak', phonetic: "[li:k]", meaning: 'n./v.漏洞；渗漏，泄露', example: 'The roof has a leak.', exampleTranslation: '屋顶有漏洞。' },
+                { id: '196', word: 'meanwhile', phonetic: "[ˈmi:nˈwail]", meaning: 'adv./n.与此同时，其间', example: 'Cook the pasta; meanwhile, chop the vegetables.', exampleTranslation: '煮意大利面，同时把蔬菜切碎。' },
+                { id: '197', word: 'obesity', phonetic: "[əuˈbiːsiti]", meaning: 'n.肥胖', example: 'Obesity is a growing health problem.', exampleTranslation: '肥胖是一个日益严重的健康问题。' },
+                { id: '198', word: 'outweigh', phonetic: "[autˈwei]", meaning: 'vt.比...更重，比...更重要', example: 'The benefits outweigh the risks.', exampleTranslation: '好处大于风险。' },
+                { id: '199', word: 'overcome', phonetic: "[əuvə'kʌm]", meaning: 'v.克服，(感情上)受到极大影响', example: 'She worked hard to overcome her fears.', exampleTranslation: '她努力克服自己的恐惧。' },
+                { id: '200', word: 'platform', phonetic: "['plætfɔ:m]", meaning: 'n.站台，平台', example: 'The train is leaving from platform 3.', exampleTranslation: '火车即将从3号站台发车。' },
+                { id: '201', word: 'preference', phonetic: "[ˈprefərəns]", meaning: 'n.偏爱', example: 'I have a preference for tea over coffee.', exampleTranslation: '相比咖啡，我更偏爱茶。' },
+                { id: '202', word: 'presence', phonetic: "[ˈprezns]", meaning: 'n.出席；存在', example: 'Your presence is requested at the meeting.', exampleTranslation: '请您出席这次会议。' },
+                { id: '203', word: 'psychology', phonetic: "[saiˈkɒlədʒi]", meaning: 'n.心理学，心理', example: 'She is studying psychology at college.', exampleTranslation: '她在大学学习心理学。' },
+                { id: '204', word: 'range', phonetic: "[reindʒ]", meaning: 'n./v.山脉，幅度，范围，种类；变动', example: 'The shop offers a wide range of products.', exampleTranslation: '这家店提供种类繁多的产品。' },
+                { id: '205', word: 'relaxation', phonetic: "[ˌri:lækˈseiʃn]", meaning: 'n.放松，休息，消遣', example: 'Yoga is good for relaxation.', exampleTranslation: '瑜伽有助于放松。' },
+                { id: '206', word: 'satellite', phonetic: "[ˈsætəlait]", meaning: 'n.卫星', example: 'The moon is a satellite of the earth.', exampleTranslation: '月球是地球的卫星。' },
+                { id: '207', word: 'satisfaction', phonetic: "[ˌsætisˈfækʃən]", meaning: 'n.满足(意)', example: 'He smiled with satisfaction.', exampleTranslation: '他满意地笑了。' },
+                { id: '208', word: 'schedule', phonetic: "['skedʒu:əl]", meaning: 'n./vt.日程表；为某事安排时间', example: 'My schedule is very busy today.', exampleTranslation: '我今天的日程安排得很满。' },
+                { id: '209', word: 'sensitive', phonetic: "[ˈsensitiv]", meaning: 'adj.体贴的，敏感的，灵敏的', example: 'My skin is very sensitive to the sun.', exampleTranslation: '我的皮肤对阳光非常敏感。' },
+                { id: '210', word: 'specialist', phonetic: "[ˈspeʃəlist]", meaning: 'n.专家', example: 'She is a specialist in eye diseases.', exampleTranslation: '她是眼科疾病的专家。' },
+                { id: '211', word: 'steel', phonetic: "[stiːl]", meaning: 'n.钢，钢铁', example: 'The bridge is made of steel.', exampleTranslation: '这座桥是由钢铁建造的。' },
+                { id: '212', word: 'suffer', phonetic: "[ˈsʌfə]", meaning: 'v.经受，遭受', example: 'Many people suffer from allergies.', exampleTranslation: '许多人饱受过敏之苦。' },
+                { id: '213', word: 'survive', phonetic: "[sə'vaiv]", meaning: 'v.幸免，幸存', example: 'Camels can survive in the desert without water.', exampleTranslation: '骆驼可以在没有水的情况下在沙漠中生存。' },
+                { id: '214', word: 'tank', phonetic: "[tæŋk]", meaning: 'n.坦克，箱，储水池', example: 'He filled the gas tank before the trip.', exampleTranslation: '他在旅行前加满了油箱。' },
+                { id: '215', word: 'tap', phonetic: "[tæp]", meaning: 'n./v.塞子，龙头；轻拍', example: 'Please turn off the tap tightly.', exampleTranslation: '请把水龙头关紧。' },
+                { id: '216', word: 'timetable', phonetic: "[ˈtaimteibl]", meaning: 'n.时间表，时刻表', example: 'The bus timetable has changed.', exampleTranslation: '公交车时刻表变了。' },
+                { id: '217', word: 'treatment', phonetic: "[ˈtri:tmənt]", meaning: 'n.对待，治疗', example: 'The best treatment is rest.', exampleTranslation: '最好的治疗是休息。' },
+                { id: '218', word: 'volume', phonetic: "[ˈvɔlju:m]", meaning: 'n.卷，册，体积，容量，大量，音量', example: 'Please turn down the volume.', exampleTranslation: '请把音量调低。' },
+                { id: '219', word: 'widespread', phonetic: "['waidspred]", meaning: 'adj.分布广泛的，普遍的', example: 'Flu is widespread in winter.', exampleTranslation: '流感在冬季很普遍。' },
+                { id: '220', word: 'absolute', phonetic: "[ˈæbsəlu:t]", meaning: 'adj.绝对的，完全的', example: 'I have absolute confidence in you.', exampleTranslation: '我对你绝对有信心。' },
+                { id: '221', word: 'admit', phonetic: "[ədˈmit]", meaning: 'v.承认，准许…进入，录取', example: 'He refused to admit his mistake.', exampleTranslation: '他拒绝承认自己的错误。' },
+                { id: '222', word: 'aggression', phonetic: "[əˈgreʃən]", meaning: 'n.进攻；侵略；侵犯', example: 'The dog showed signs of aggression.', exampleTranslation: '那条狗表现出了攻击性的迹象。' },
+                { id: '223', word: 'awesome', phonetic: "[ɔːsəm]", meaning: 'adj.可怕的，令人敬畏的，极好的', example: 'The view from the top is awesome.', exampleTranslation: '山顶的景色棒极了。' },
+                { id: '224', word: 'bake', phonetic: "[beik]", meaning: 'v./n.烘焙，烤', example: 'I will bake a cake for her birthday.', exampleTranslation: '我要为她的生日烤一个蛋糕。' },
+                { id: '225', word: 'blame', phonetic: "[bleim]", meaning: 'n./vt.(坏事或错事的)责任；责备，归咎于', example: "Don't blame me for the delay.", exampleTranslation: '别因为延误而责怪我。' },
+                { id: '226', word: 'border', phonetic: "['bɔ:də]", meaning: 'n./v.边界，边境；接壤', example: 'We crossed the border into France.', exampleTranslation: '我们越过边境进入了法国。' },
+                { id: '227', word: 'bother', phonetic: "[ˈbɔðə]", meaning: 'v.打扰，使烦恼，费心', example: 'Sorry to bother you.', exampleTranslation: '对不起，打扰你了。' },
+                { id: '228', word: 'civilization', phonetic: "[ˌsivilaiˈzeiʃən]", meaning: 'n.文明', example: 'Ancient Greek civilization is fascinating.', exampleTranslation: '古希腊文明令人着迷。' },
+                { id: '229', word: 'colleague', phonetic: "['kɔli:ɡ]", meaning: 'n.同事', example: 'She is a colleague of mine.', exampleTranslation: '她是我的一个同事。' },
+                { id: '230', word: 'complex', phonetic: "[ˈkɔmpleks]", meaning: 'adj.复杂的', example: 'The problem is very complex.', exampleTranslation: '这个问题非常复杂。' },
+                { id: '231', word: 'concern', phonetic: "[kənˈsə:n]", meaning: 'n./vt.关心；与…有关', example: 'My main concern is safety.', exampleTranslation: '我主要关心的是安全。' },
+                { id: '232', word: 'conserve', phonetic: "[kənˈsə:v]", meaning: 'vt.保存，节约', example: 'We must conserve energy.', exampleTranslation: '我们必须节约能源。' },
+                { id: '233', word: 'contribute', phonetic: "[kən'tribju:t]", meaning: 'vt.捐献，贡献，是…的原因', example: 'Everyone should contribute to the discussion.', exampleTranslation: '每个人都应该参与讨论。' },
+                { id: '234', word: 'credit', phonetic: "[ˈkredit]", meaning: 'n./v.信誉，学分，赞扬；归功于', example: 'She got no credit for her work.', exampleTranslation: '她的工作没有得到应有的赞扬。' },
+                { id: '235', word: 'crime', phonetic: "[kraim]", meaning: 'n.犯罪，罪行', example: 'Robbery is a serious crime.', exampleTranslation: '抢劫是严重的犯罪。' },
+                { id: '236', word: 'criticism', phonetic: "[ˈkritisizəm]", meaning: 'n.批评，评论', example: 'He cannot accept criticism.', exampleTranslation: '他接受不了批评。' },
+                { id: '237', word: 'deadline', phonetic: "['dedlain]", meaning: 'n.截止日期', example: 'The deadline for the project is tomorrow.', exampleTranslation: '项目的截止日期是明天。' },
+                { id: '238', word: 'degrade', phonetic: "[diˈgreid]", meaning: 'vt.贬低，使恶化，分解', example: 'Plastic bags degrade slowly.', exampleTranslation: '塑料袋降解得很慢。' },
+                { id: '239', word: 'delivery', phonetic: "[diˈlivəri]", meaning: 'n.传送；递送', example: 'The delivery arrived late.', exampleTranslation: '快递送晚了。' },
+                { id: '240', word: 'demand', phonetic: "[di'mɑ:nd]", meaning: 'n./vt.(强烈)要求', example: 'There is a high demand for new cars.', exampleTranslation: '新车的需求量很大。' },
+                { id: '241', word: 'dessert', phonetic: "[diˈzə:t]", meaning: 'n.甜食，点心', example: 'We had ice cream for dessert.', exampleTranslation: '我们要了冰淇淋做甜点。' },
+                { id: '242', word: 'discomfort', phonetic: "[disˈkʌmfət]", meaning: 'n.vt.不舒服；不适', example: 'The shoes caused him some discomfort.', exampleTranslation: '这双鞋让他感到有些不适。' },
+                { id: '243', word: 'discourage', phonetic: "[disˈkʌridʒ]", meaning: 'vt.使泄气，使沮丧，劝阻', example: "Don't let failure discourage you.", exampleTranslation: '不要让失败使你气馁。' },
+                { id: '244', word: 'economic', phonetic: "[i:kə'nɔmik]", meaning: 'adj.经济的，经济学的', example: 'The country is facing an economic crisis.', exampleTranslation: '这个国家正面临经济危机。' },
+                { id: '245', word: 'emergency', phonetic: "[i'mə:dʒənsi]", meaning: 'n.紧急情况', example: 'Call 911 in case of an emergency.', exampleTranslation: '遇到紧急情况请拨打911。' },
+                { id: '246', word: 'endanger', phonetic: "[in'deindʒə]", meaning: 'vt.危害，使受到危险', example: 'Pollution endangers marine life.', exampleTranslation: '污染危及海洋生物。' },
+                { id: '247', word: 'entertain', phonetic: "[ˌentə'tein]", meaning: 'v.使…娱乐，招待', example: 'He tried to entertain the guests with jokes.', exampleTranslation: '他试图用笑话招待客人。' },
+                { id: '248', word: 'exception', phonetic: "[ik'sepʃən]", meaning: 'n.例外，例外的人、事', example: 'There is an exception to every rule.', exampleTranslation: '凡事皆有例外。' },
+                { id: '249', word: 'extraordinary', phonetic: "[ikˈstrɔ:dinəri]", meaning: 'adj.非凡的，不平常的', example: 'She has extraordinary talent.', exampleTranslation: '她拥有非凡的才华。' },
+                { id: '250', word: 'financial', phonetic: "[faiˈnænʃl]", meaning: 'adj.财政的，金融的', example: 'He is in financial difficulty.', exampleTranslation: '他陷入了财务困境。' },
+                { id: '251', word: 'flexible', phonetic: "[ˈfleksəbəl]", meaning: 'adj.柔韧的，易弯曲的，灵活的', example: 'My work schedule is flexible.', exampleTranslation: '我的工作时间很灵活。' },
+                { id: '252', word: 'grateful', phonetic: "[ˈgreitfl]", meaning: 'adj.感谢的', example: 'I am grateful for your support.', exampleTranslation: '我很感激你的支持。' },
+                { id: '253', word: 'greenhouse', phonetic: "['griːnhaus]", meaning: 'n.温室', example: 'Tomatoes grow well in a greenhouse.', exampleTranslation: '西红柿在温室里长得很好。' },
+                { id: '254', word: 'handle', phonetic: "[ˈhændl]", meaning: 'n./v.柄，把手；拿，处理，操纵，驾驭', example: 'Can you handle this heavy box?', exampleTranslation: '你能搬动这个重箱子吗？' },
+                { id: '255', word: 'healthcare', phonetic: "['helθkeə]", meaning: 'n.健康护理', example: 'Good healthcare is important for everyone.', exampleTranslation: '良好的医疗保健对每个人都很重要。' },
+                { id: '256', word: 'humanity', phonetic: "[hjuːˈmænəti]", meaning: 'n.人类，人性；人文学科', example: 'We must show humanity to others.', exampleTranslation: '我们要对他人表现出仁慈。' },
+                { id: '257', word: 'import', phonetic: "[ˈimpɔːt]", meaning: 'n./v.进口，输入', example: 'We import coffee from Brazil.', exampleTranslation: '我们要从巴西进口咖啡。' },
+                { id: '258', word: 'income', phonetic: "['inkʌm]", meaning: 'n.收入', example: 'His monthly income has increased.', exampleTranslation: '他的月收入增加了。' },
+                { id: '259', word: 'inherit', phonetic: "[inˈherit]", meaning: 'vt.继承，经遗传获得', example: 'She will inherit the house.', exampleTranslation: '她将继承这所房子。' },
+                { id: '260', word: 'innovation', phonetic: "[ˌinəˈveiʃən]", meaning: 'n.创新', example: 'Innovation drives progress.', exampleTranslation: '创新推动进步。' },
+                { id: '261', word: 'install', phonetic: "[inˈstɔ:l]", meaning: 'vt.安装；设置', example: 'I need to install new software.', exampleTranslation: '我需要安装新软件。' },
+                { id: '262', word: 'interpersonal', phonetic: "[ˌintəˈpɜ:sənl]", meaning: 'adj.人际的', example: 'She has good interpersonal skills.', exampleTranslation: '她有良好的人际交往能力。' },
+                { id: '263', word: 'lantern', phonetic: "['læntən]", meaning: 'n.灯笼', example: 'He hung a lantern outside the door.', exampleTranslation: '他在门外挂了一个灯笼。' },
+                { id: '264', word: 'length', phonetic: "[leŋθ]", meaning: 'n.长度', example: 'Measure the length of the room.', exampleTranslation: '测量一下房间的长度。' },
+                { id: '265', word: 'location', phonetic: "[lə(u)'keiʃ(ə)n]", meaning: 'n.位置', example: 'The hotel is in a great location.', exampleTranslation: '这家酒店位置很好。' },
+                { id: '266', word: 'logical', phonetic: "['lɒdʒikəl]", meaning: 'adj.符合逻辑的', example: 'That is a logical conclusion.', exampleTranslation: '这是一个合乎逻辑的结论。' },
+                { id: '267', word: 'male', phonetic: "[meil]", meaning: 'adj.男性的；雄性的', example: 'The bird is a male.', exampleTranslation: '这只鸟是雄性的。' },
+                { id: '268', word: 'multiple', phonetic: "[ˈmʌltipəl]", meaning: 'n./adj.倍数；多的', example: 'There are multiple choice questions.', exampleTranslation: '这里有多项选择题。' },
+                { id: '269', word: 'nationwide', phonetic: "[ˌneiʃnˈwaid]", meaning: 'adj.全国性的', example: 'The news was broadcast nationwide.', exampleTranslation: '这则新闻在全国播出。' },
+                { id: '270', word: 'native', phonetic: "[ˈneitiv]", meaning: 'adj./n.当地的；本地人', example: 'He is a native speaker of English.', exampleTranslation: '他是英语母语者。' },
+                { id: '271', word: 'noticeable', phonetic: "[ˈnəʊtisəbl]", meaning: 'adj.显著的；显而易见的', example: 'There is a noticeable difference.', exampleTranslation: '有一个明显的区别。' },
+                { id: '272', word: 'occasional', phonetic: "[əˈkeiʒənəl]", meaning: 'adj.偶尔的', example: 'We have occasional rain in summer.', exampleTranslation: '夏天我们偶尔会下雨。' },
+                { id: '273', word: 'outgoing', phonetic: "['autgəuiŋ]", meaning: 'adj.开朗的', example: 'She is very outgoing and makes friends easily.', exampleTranslation: '她很外向，很容易交朋友。' },
+                { id: '274', word: 'overlook', phonetic: "[ˌəuvəˈluk]", meaning: 'v./n.忽略；俯视', example: 'The room overlooks the garden.', exampleTranslation: '这个房间俯瞰着花园。' },
+                { id: '275', word: 'pack', phonetic: "[pæk]", meaning: 'n./v.包裹；包装，打包', example: 'I need to pack my suitcase.', exampleTranslation: '我需要打包我的行李箱。' },
+                { id: '276', word: 'passive', phonetic: "[ˈpæsiv]", meaning: 'adj.消极的，被动的', example: 'Passive smoking is harmful.', exampleTranslation: '被动吸烟是有害的。' },
+                { id: '277', word: 'poetry', phonetic: "['pəuitri]", meaning: 'n.诗篇，诗歌', example: 'She loves reading poetry.', exampleTranslation: '她喜欢读诗。' },
+                { id: '278', word: 'pollutant', phonetic: "[pəˈlu:tənt]", meaning: 'n.污染物', example: 'Smoke is a common air pollutant.', exampleTranslation: '烟雾是一种常见的空气污染物。' },
+                { id: '279', word: 'preserve', phonetic: "[pri'zə:v]", meaning: 'n./vt.腌菜，泡菜，果酱；保存，保护', example: 'We must preserve our history.', exampleTranslation: '我们必须保护我们的历史。' },
+                { id: '280', word: 'professional', phonetic: "[prəˈfeʃənəl]", meaning: 'adj./n.专业的，职业的，专业人员', example: 'Behave in a professional manner.', exampleTranslation: '表现得专业一点。' },
+                { id: '281', word: 'pure', phonetic: "[pjʊə(r)]", meaning: 'adj.纯的，纯粹的，纯洁的', example: 'This ring is made of pure gold.', exampleTranslation: '这枚戒指是纯金做的。' },
+                { id: '282', word: 'realistic', phonetic: "[riəˈlistik]", meaning: 'adj.现实的，实际的', example: "Let's be realistic about the goals.", exampleTranslation: '让我们对目标现实一点。' },
+                { id: '283', word: 'relaxing', phonetic: "[ri'læksiŋ]", meaning: 'adj.轻松的，放松的', example: 'A warm bath is very relaxing.', exampleTranslation: '洗个热水澡很放松。' },
+                { id: '284', word: 'religious', phonetic: "[riˈlidʒəs]", meaning: 'adj.宗教的，虔诚的', example: 'It is a religious holiday.', exampleTranslation: '这是一个宗教节日。' },
+                { id: '285', word: 'reserve', phonetic: "[ri'zə:v]", meaning: 'n./vt.保护区；保护，预定', example: 'Please reserve a table for two.', exampleTranslation: '请预订一张双人桌。' },
+                { id: '286', word: 'reusable', phonetic: "[riː'juːzəbl]", meaning: 'adj.可重复使用的', example: 'Use reusable bags for shopping.', exampleTranslation: '购物时使用可重复使用的袋子。' },
+                { id: '287', word: 'risky', phonetic: "[ˈriski]", meaning: 'adj.有风险的', example: 'Investing in that stock is risky.', exampleTranslation: '投资那只股票有风险。' },
+                { id: '288', word: 'roll', phonetic: "[rəul]", meaning: 'n./v.卷形物，面包圈；滚动', example: 'The ball rolled down the hill.', exampleTranslation: '球滚下了山坡。' },
+                { id: '289', word: 'satisfying', phonetic: "[ˈsætisfaiiŋ]", meaning: 'adj.令人满意（或满足）的', example: 'Finishing the job was satisfying.', exampleTranslation: '完成工作令人满意。' },
+                { id: '290', word: 'scan', phonetic: "[skæn]", meaning: 'n./v.扫描，浏览', example: 'Please scan the document.', exampleTranslation: '请扫描这份文件。' },
+                { id: '291', word: 'scared', phonetic: "[skeəd]", meaning: 'adj.感到害怕的', example: 'The loud noise scared the cat.', exampleTranslation: '巨大的噪音吓坏了猫。' },
+                { id: '292', word: 'scene', phonetic: "[si:n]", meaning: 'n.景色，场景，现场', example: 'The police arrived at the crime scene.', exampleTranslation: '警察到达了犯罪现场。' },
+                { id: '293', word: 'sculpture', phonetic: "['skʌlptʃə]", meaning: 'n.雕刻', example: 'There is a stone sculpture in the park.', exampleTranslation: '公园里有一座石雕。' },
+                { id: '294', word: 'stable', phonetic: "[ˈsteibəl]", meaning: 'n./adj.马厩；稳固的，稳定的，沉稳的', example: 'The patient is in stable condition.', exampleTranslation: '病人情况稳定。' },
+                { id: '295', word: 'strength', phonetic: "[streŋθ]", meaning: 'n.力气，毅力，优势', example: 'He showed great physical strength.', exampleTranslation: '他展示了巨大的体力。' },
+                { id: '296', word: 'threat', phonetic: "['θret]", meaning: 'n.威胁，征兆', example: 'Pollution is a threat to the environment.', exampleTranslation: '污染是对环境的威胁。' },
+                { id: '297', word: 'thrill', phonetic: "[θril]", meaning: 'n./v.兴奋，激动，使非常兴奋，', example: 'The roller coaster gave me a thrill.', exampleTranslation: '过山车给了我一种刺激感。' },
+                { id: '298', word: 'tiredness', phonetic: "['taiə(r)dnis]", meaning: 'n.疲劳', example: 'She felt overcome by tiredness.', exampleTranslation: '她感到疲惫不堪。' },
+                { id: '299', word: 'tiring', phonetic: "[ˈtaiəriŋ]", meaning: 'adj.令人困倦的；使人疲劳的', example: 'The long journey was tiring.', exampleTranslation: '长途旅行很累人。' },
+                { id: '300', word: 'update', phonetic: "[ˌʌpˈdeit]", meaning: 'v./n.更新', example: 'Please update your antivirus software.', exampleTranslation: '请更新你的杀毒软件。' },
+                { id: '301', word: 'version', phonetic: "[ˈvə:ʃən]", meaning: 'n.版本', example: 'Please update the app to the latest version.', exampleTranslation: '请将应用程序更新到最新版本。' },
+                { id: '302', word: 'wander', phonetic: "[ˈwɔndə]", meaning: 'n./vi.闲逛，漫游，漫步', example: 'We like to wander around the old city.', exampleTranslation: '我们喜欢在老城区闲逛。' },
+                { id: '303', word: 'weaken', phonetic: "[ˈwiːkən]", meaning: 'v.（使）虚弱，削弱；动摇', example: 'The storm began to weaken in the afternoon.', exampleTranslation: '暴风雨在下午开始减弱。' },
+                { id: '304', word: 'whale', phonetic: "[weil]", meaning: 'n.鲸鱼', example: 'The blue whale is the largest animal.', exampleTranslation: '蓝鲸是最大的动物。' },
+                { id: '305', word: 'wrap', phonetic: "[ræp]", meaning: 'vt.包，裹', example: 'Please wrap the gift carefully.', exampleTranslation: '请仔细包装这份礼物。' },
+                { id: '306', word: 'achievable', phonetic: "[ə'tʃivəbl]", meaning: 'adj.可实现的', example: 'Set goals that are achievable.', exampleTranslation: '设定可以实现的目标。' },
+                { id: '307', word: 'addiction', phonetic: "[əˈdikʃn]", meaning: 'n.着迷，嗜好', example: 'Phone addiction is a common problem.', exampleTranslation: '手机成瘾是一个普遍的问题。' },
+                { id: '308', word: 'admiration', phonetic: "[ˌædməˈreiʃən]", meaning: 'n.赞赏，钦佩', example: 'I have great admiration for her courage.', exampleTranslation: '我非常钦佩她的勇气。' },
+                { id: '309', word: 'advance', phonetic: "[əd'vɑ:ns]", meaning: 'n./v.前进，进步，提前', example: 'Technological advance changes our lives.', exampleTranslation: '技术进步改变了我们的生活。' },
+                { id: '310', word: 'affordable', phonetic: "[ ə'fɔ:dəbl]", meaning: 'adj.负担得起的', example: 'This car is very affordable.', exampleTranslation: '这辆车价格很实惠。' },
+                { id: '311', word: 'analysis', phonetic: "[əˈnæləsis]", meaning: 'n.分析', example: 'The report contains a detailed analysis.', exampleTranslation: '这份报告包含详细的分析。' },
+                { id: '312', word: 'appeal', phonetic: "[ə'pi:l]", meaning: 'n./vi.呼吁，上诉，吸引', example: 'The game has a wide appeal to children.', exampleTranslation: '这个游戏对孩子有很广泛的吸引力。' },
+                { id: '313', word: 'application', phonetic: "[ˌæpliˈkeiʃ(ə)n]", meaning: 'n.应用，申请', example: 'Submit your job application online.', exampleTranslation: '在线提交你的工作申请。' },
+                { id: '314', word: 'approach', phonetic: "[ə'prəutʃ]", meaning: 'n./v.方法，途径；靠近', example: 'We need a new approach to solve this.', exampleTranslation: '我们需要一种新方法来解决这个问题。' },
+                { id: '315', word: 'appropriate', phonetic: "[əˈprəuprieit]", meaning: 'adj.恰当的', example: 'Wear clothes that are appropriate for the weather.', exampleTranslation: '穿适合天气的衣服。' },
+                { id: '316', word: 'architecture', phonetic: "[ˈɑ:kitektʃə]", meaning: 'n.建筑学(业)', example: 'The city is famous for its ancient architecture.', exampleTranslation: '这座城市以其古建筑而闻名。' },
+                { id: '317', word: 'artwork', phonetic: "[ˈɑːtwɜːk]", meaning: 'n.艺术作品', example: 'The gallery displays local artwork.', exampleTranslation: '画廊展示当地的艺术品。' },
+                { id: '318', word: 'assignment', phonetic: "[əˈsainmənt]", meaning: 'n.任务，作业', example: 'I have a history assignment due tomorrow.', exampleTranslation: '我明天有一个历史作业要交。' },
+                { id: '319', word: 'associated', phonetic: "[əˈsoʊʃieitid]", meaning: 'adj.关联的', example: 'There are risks associated with this investment.', exampleTranslation: '这项投资有相关的风险。' },
+                { id: '320', word: 'award', phonetic: "[ə'wɔ:d]", meaning: 'n.奖，奖品', example: 'He won an award for his acting.', exampleTranslation: '他因表演获得了一个奖项。' },
+                { id: '321', word: 'breakthrough', phonetic: "['breikθru:]", meaning: 'n.突破', example: 'Scientists made a major medical breakthrough.', exampleTranslation: '科学家们取得了一项重大的医学突破。' },
+                { id: '322', word: 'budget', phonetic: "[ˈbʌdʒit]", meaning: 'n.预算', example: 'We need to stick to our travel budget.', exampleTranslation: '我们需要坚持我们的旅行预算。' },
+                { id: '323', word: 'calculation', phonetic: "[ˌkælkjuˈleiʃn]", meaning: 'n.计算，估算', example: 'The math calculation was correct.', exampleTranslation: '这个数学计算是正确的。' },
+                { id: '324', word: 'capable', phonetic: "[ˈkeipəbəl]", meaning: 'adj.有能力的', example: 'She is a capable leader.', exampleTranslation: '她是一位有能力的领导者。' },
+                { id: '325', word: 'category', phonetic: "[ˈkætigəri]", meaning: 'n.种类，类别', example: 'This book belongs to the fiction category.', exampleTranslation: '这本书属于小说类。' },
+                { id: '326', word: 'channel', phonetic: "['tʃænəl]", meaning: 'n.频道，渠道，途径，海峡', example: 'Please change the TV channel.', exampleTranslation: '请换个电视频道。' },
+                { id: '327', word: 'classic', phonetic: "['klæsik]", meaning: 'n./adj.名著，经典著作；经典的，典型的', example: 'This movie is a classic.', exampleTranslation: '这部电影是经典之作。' },
+                { id: '328', word: 'clinical', phonetic: "[ˈklinikl]", meaning: 'adj.临床的，临床诊断的', example: 'The drug is undergoing clinical trials.', exampleTranslation: '这种药物正在进行临床试验。' },
+                { id: '329', word: 'command', phonetic: "[kəˈmɑ:nd]", meaning: 'n./v.命令，指挥', example: 'The general gave the command to attack.', exampleTranslation: '将军下达了进攻的命令。' },
+                { id: '330', word: 'companion', phonetic: "[kəmˈpæniən]", meaning: 'n.同伴，伴侣', example: 'A dog makes a loyal companion.', exampleTranslation: '狗是忠诚的伴侣。' },
+                { id: '331', word: 'comparison', phonetic: "[kəmˈpærisən]", meaning: 'n.比较', example: 'Make a comparison between the two models.', exampleTranslation: '对这两种型号做一个比较。' },
+                { id: '332', word: 'compromise', phonetic: "[ˈkɔmprəmaiz]", meaning: 'n./v.妥协，折衷', example: 'We reached a compromise after the discussion.', exampleTranslation: '讨论后我们达成了一个妥协。' },
+                { id: '333', word: 'conference', phonetic: "[ˈkɔnfərəns]", meaning: 'n.会议', example: 'He spoke at an international conference.', exampleTranslation: '他在一个国际会议上发言。' },
+                { id: '334', word: 'consequence', phonetic: "['kɔnsikwəns]", meaning: 'n.后果', example: 'Every action has a consequence.', exampleTranslation: '每个行动都有后果。' },
+                { id: '335', word: 'considerate', phonetic: "[kənˈsidərit]", meaning: 'adj.体贴的', example: 'It was very considerate of you to help.', exampleTranslation: '你能来帮忙真是太体贴了。' },
+                { id: '336', word: 'constant', phonetic: "[ˈkɔnstənt]", meaning: 'adj.不变的，恒定的', example: 'The constant noise is annoying.', exampleTranslation: '持续的噪音很烦人。' },
+                { id: '337', word: 'cruel', phonetic: "[ˈkru:əl]", meaning: 'adj.残酷的，残忍的', example: 'It is cruel to treat animals badly.', exampleTranslation: '虐待动物是残忍的。' },
+                { id: '338', word: 'curiosity', phonetic: "[ˌkjuəriˈɔsiti]", meaning: 'n.好奇心', example: 'Her curiosity led her to explore the cave.', exampleTranslation: '她的好奇心驱使她去探索那个洞穴。' },
+                { id: '339', word: 'curriculum', phonetic: "[kəˈrikjuləm]", meaning: 'n.课程', example: 'Math is a core part of the curriculum.', exampleTranslation: '数学是课程的核心部分。' },
+                { id: '340', word: 'defense', phonetic: "[diˈfens]", meaning: 'n.防御，保卫', example: 'The team has a strong defense.', exampleTranslation: '这支球队防守很强。' },
+                { id: '341', word: 'department', phonetic: "[diˈpɑ:tmənt]", meaning: 'n.部，部门，系', example: 'She works in the sales department.', exampleTranslation: '她在销售部工作。' },
+                { id: '342', word: 'dependable', phonetic: "[diˈpendəbl]", meaning: 'adj.可信赖的；可靠的', example: 'He is a dependable friend.', exampleTranslation: '他是一个可靠的朋友。' },
+                { id: '343', word: 'determination', phonetic: "[diˌtɜːmiˈneiʃn]", meaning: 'n.决心，决定', example: 'She showed great determination to win.', exampleTranslation: '她表现出了获胜的巨大决心。' },
+                { id: '344', word: 'dilemma', phonetic: "[diˈlemə]", meaning: 'n.(进退两难的)困境', example: 'I am facing a difficult dilemma.', exampleTranslation: '我正面临一个两难的境地。' },
+                { id: '345', word: 'dishonest', phonetic: "[disˈɒnist]", meaning: 'adj.不诚实的；骗人的；欺骗性的', example: 'He was dishonest about his age.', exampleTranslation: '他在年龄上不诚实。' },
+                { id: '346', word: 'dispose', phonetic: "[disˈpəuz]", meaning: 'v.安排，布置，去除，处理', example: 'Please dispose of waste properly.', exampleTranslation: '请妥善处理废物。' },
+                { id: '347', word: 'distribute', phonetic: "[diˈstribju:t]", meaning: 'vt.分发，分配', example: 'They distribute food to the homeless.', exampleTranslation: '他们向无家可归者分发食物。' },
+                { id: '348', word: 'disturb', phonetic: "[diˈstə:b]", meaning: 'vt.打扰，妨碍', example: 'Do not disturb him while he is sleeping.', exampleTranslation: '他睡觉时不要打扰他。' },
+                { id: '349', word: 'embrace', phonetic: "[imˈbreis]", meaning: 'n./vt.拥抱；包括，欣然接受，乐意采纳', example: 'She embraced her son warmly.', exampleTranslation: '她热情地拥抱了她的儿子。' },
+                { id: '350', word: 'encounter', phonetic: "[inˈkaʊntə(r)]", meaning: 'n./v.遭遇，偶遇', example: 'We encountered many problems.', exampleTranslation: '我们遇到了很多问题。' },
+                { id: '351', word: 'encouragement', phonetic: "[in'kʌridӡmənt]", meaning: 'n.鼓励，激励', example: 'Teacher gave me some words of encouragement.', exampleTranslation: '老师给了我一些鼓励的话。' },
+                { id: '352', word: 'enhance', phonetic: "[inˈhɑ:ns]", meaning: 'vt.提高，增加，加强', example: 'Spices enhance the flavor of the dish.', exampleTranslation: '香料增强了菜肴的风味。' },
+                { id: '353', word: 'ensure', phonetic: "[inˈʃuə]", meaning: 'vt.确保，保证', example: 'Please ensure the door is locked.', exampleTranslation: '请确保门锁好了。' },
+                { id: '354', word: 'evolution', phonetic: "[ˌi:vəˈlu:ʃən]", meaning: 'n.进化', example: 'Human evolution took millions of years.', exampleTranslation: '人类进化经历了数百万年。' },
+                { id: '355', word: 'float', phonetic: "[fləut]", meaning: 'v.浮，漂浮', example: 'Wood floats on water.', exampleTranslation: '木头浮在水面上。' },
+                { id: '356', word: 'fluid', phonetic: "[ˈflu:id]", meaning: 'n./adj.液体', example: 'Drink plenty of fluid when you are sick.', exampleTranslation: '生病时要多喝流质（水）。' },
+                { id: '357', word: 'format', phonetic: "['fɔːmæt]", meaning: 'n.格式', example: 'The file is in PDF format.', exampleTranslation: '文件是PDF格式的。' },
+                { id: '358', word: 'fortunate', phonetic: "[ˈfɔ:tʃənət]", meaning: 'adj.幸运的', example: 'I feel very fortunate to have you.', exampleTranslation: '我很幸运拥有你。' },
+                { id: '359', word: 'foundation', phonetic: "[faunˈdeiʃən]", meaning: 'n.地基，基础', example: 'Trust is the foundation of a relationship.', exampleTranslation: '信任是关系的基础。' },
+                { id: '360', word: 'fragile', phonetic: "['frædʒail]", meaning: 'adj.易损坏的', example: 'Handle the box with care, it is fragile.', exampleTranslation: '小心搬运箱子，它很易碎。' },
+                { id: '361', word: 'frightened', phonetic: "['fraitnd]", meaning: 'adj.害怕的，受惊吓的', example: 'The loud thunder frightened the dog.', exampleTranslation: '巨大的雷声吓坏了狗。' },
+                { id: '362', word: 'furniture', phonetic: "[ˈfɜːnitʃə(r)]", meaning: 'n.家具', example: 'We bought some new furniture for the living room.', exampleTranslation: '我们给客厅买了一些新家具。' },
+                { id: '363', word: 'generous', phonetic: "[ˈdʒenərəs]", meaning: 'adj.慷慨的，丰富的', example: 'He is very generous with his time.', exampleTranslation: '他非常慷慨地付出他的时间。' },
+                { id: '364', word: 'gesture', phonetic: "[ˈdʒestʃə]", meaning: 'n./v.姿势，手势，姿态；作手势', example: 'He made a friendly gesture.', exampleTranslation: '他做了一个友好的手势。' },
+                { id: '365', word: 'graduate', phonetic: "['ɡrædʒueit]", meaning: 'n./vi.毕业生；毕业', example: 'She will graduate from university in June.', exampleTranslation: '她将于六月大学毕业。' },
+                { id: '366', word: 'grain', phonetic: "[grein]", meaning: 'n.谷物，谷粒', example: 'Rice is a staple grain in Asia.', exampleTranslation: '大米是亚洲的主要谷物。' },
+                { id: '367', word: 'grand', phonetic: "[grænd]", meaning: 'adj.宏伟的，壮丽的', example: 'The palace is a grand building.', exampleTranslation: '这座宫殿是一座宏伟的建筑。' },
+                { id: '368', word: 'guidance', phonetic: "['ɡaidəns]", meaning: 'n.指导，领导', example: 'I need your guidance on this matter.', exampleTranslation: '在这件事上我需要你的指导。' },
+                { id: '369', word: 'identify', phonetic: "[ai'dentifai]", meaning: 'vt.认出，识别', example: 'Can you identify the thief?', exampleTranslation: '你能认出小偷吗？' },
+                { id: '370', word: 'ignore', phonetic: "[igˈnɔ:(r)]", meaning: 'vt.不理会，忽视', example: "Don't ignore the warning signs.", exampleTranslation: '不要忽视警告标志。' },
+                { id: '371', word: 'immune', phonetic: "[iˈmju:n]", meaning: 'adj.免疫的，有免疫力的，不受影响的', example: 'Vaccines make you immune to diseases.', exampleTranslation: '疫苗使你对疾病免疫。' },
+                { id: '372', word: 'implication', phonetic: "[ˌimpliˈkeiʃən]", meaning: 'n.暗示', example: 'The decision has a serious implication.', exampleTranslation: '这个决定有严重的含义（后果）。' },
+                { id: '373', word: 'impression', phonetic: "[imˈpreʃən]", meaning: 'n.印象', example: 'First impressions are very important.', exampleTranslation: '第一印象非常重要。' },
+                { id: '374', word: 'inability', phonetic: "[ˌinəˈbiləti]", meaning: 'n.无能', example: 'His inability to swim is a problem.', exampleTranslation: '他不会游泳是个问题。' },
+                { id: '375', word: 'incident', phonetic: "['insidənt]", meaning: 'n.小事件，暴力冲突事件', example: 'The police reported a minor incident.', exampleTranslation: '警方报告了一起小事故。' },
+                { id: '376', word: 'incorrect', phonetic: "[ˌinkəˈrekt]", meaning: 'adj.不准确的；不正确的', example: 'Your answer is incorrect.', exampleTranslation: '你的答案不正确。' },
+                { id: '377', word: 'initial', phonetic: "[iˈniʃəl]", meaning: 'adj./n.最初的，词首的；(姓名的)首字母', example: 'My initial reaction was surprise.', exampleTranslation: '我的最初反应是惊讶。' },
+                { id: '378', word: 'intensive', phonetic: "[inˈtensiv]", meaning: 'adj.密集的，加强的', example: 'The course offers intensive training.', exampleTranslation: '这门课程提供强化训练。' },
+                { id: '379', word: 'internal', phonetic: "[in'tɜːn(ə)l]", meaning: 'adj.国内的，内部的', example: 'The company has internal conflicts.', exampleTranslation: '公司有内部冲突。' },
+                { id: '380', word: 'invasion', phonetic: "[inˈveiʒn]", meaning: 'n.入侵；侵犯', example: 'The army planned an invasion.', exampleTranslation: '军队策划了一次入侵。' },
+                { id: '381', word: 'irrelevant', phonetic: "[iˈrelivənt]", meaning: 'adj.无关的', example: 'That detail is irrelevant to the story.', exampleTranslation: '那个细节与故事无关。' },
+                { id: '382', word: 'judgment', phonetic: "[ˈdʒʌdʒmənt]", meaning: 'n.判断，判决', example: 'Trust your own judgment.', exampleTranslation: '相信你自己的判断。' },
+                { id: '383', word: 'knowledgeable', phonetic: "[ˈnɔlidʒəbəl]", meaning: 'adj.博学的，有见识的', example: 'He is knowledgeable about wine.', exampleTranslation: '他对葡萄酒很有研究。' },
+                { id: '384', word: 'lane', phonetic: "[lein]", meaning: 'n.小路', example: 'Stay in the right lane.', exampleTranslation: '保持在右车道。' },
+                { id: '385', word: 'lighten', phonetic: "[ˈlaitn]", meaning: 'v.(使某物)变轻；(使某事物)令人放心，解除忧虑', example: 'The news helped to lighten the mood.', exampleTranslation: '这个消息有助于缓和气氛。' },
+                { id: '386', word: 'lung', phonetic: "[lʌŋ]", meaning: 'n.肺', example: 'Smoking damages your lungs.', exampleTranslation: '吸烟损害你的肺。' },
+                { id: '387', word: 'maintain', phonetic: "[meinˈtein]", meaning: 'vt.维持，保持，供养', example: 'We must maintain the machine regularly.', exampleTranslation: '我们必须定期保养机器。' },
+                { id: '388', word: 'mass', phonetic: "[mæs]", meaning: 'n.adj.大量，很多；大批的，广泛的', example: 'A mass of people gathered in the square.', exampleTranslation: '一大群人聚集在广场上。' },
+                { id: '389', word: 'messy', phonetic: "[ˈmesi]", meaning: 'adj.凌乱的', example: 'My room is very messy today.', exampleTranslation: '我房间今天很乱。' },
+                { id: '390', word: 'mission', phonetic: "['miʃ(ə)n]", meaning: 'n.使命', example: 'Our mission is to help the poor.', exampleTranslation: '我们的使命是帮助穷人。' },
+                { id: '391', word: 'mixture', phonetic: "[ˈmikstʃə(r)]", meaning: 'n.混合，混合物', example: 'The drink is a mixture of juice and soda.', exampleTranslation: '这种饮料是果汁和苏打水的混合物。' },
+                { id: '392', word: 'multimedia', phonetic: "[ˌmʌltiˈmi:diə]", meaning: 'adj.多媒体的', example: 'The presentation used multimedia elements.', exampleTranslation: '演示使用了多媒体元素。' },
+                { id: '393', word: 'muscle', phonetic: "['mʌs(ə)l]", meaning: 'n.肌肉', example: 'Exercise helps build muscle.', exampleTranslation: '运动有助于增强肌肉。' },
+                { id: '394', word: 'nutrition', phonetic: "[nju:'triʃən]", meaning: 'n.营养', example: 'Good nutrition is essential for health.', exampleTranslation: '良好的营养对健康至关重要。' },
+                { id: '395', word: 'occasion', phonetic: "[ə'keiʒən]", meaning: 'n.场合', example: 'We dress up for special occasions.', exampleTranslation: '我们在特殊场合会盛装打扮。' },
+                { id: '396', word: 'original', phonetic: "[əˈridʒənəl]", meaning: 'adj.原本的，独创的', example: 'The original plan was better.', exampleTranslation: '最初的计划更好。' },
+                { id: '397', word: 'passion', phonetic: "['pæʃən]", meaning: 'n.激情，热情', example: 'He has a passion for cooking.', exampleTranslation: '他对烹饪充满激情。' },
+                { id: '398', word: 'passionate', phonetic: "[ˈpæʃənit]", meaning: 'adj.充满激情的', example: 'She is a passionate writer.', exampleTranslation: '她是一位充满激情的作家。' },
+                { id: '399', word: 'perspective', phonetic: "[pəˈspektiv]", meaning: 'n.角度，观点，想法', example: 'Try to see it from my perspective.', exampleTranslation: '试着从我的角度看问题。' },
+                { id: '400', word: 'phenomenon', phonetic: "[fəˈnɒminən]", meaning: 'n.现象', example: 'The Northern Lights are a natural phenomenon.', exampleTranslation: '北极光是一种自然现象。' },
+                { id: '401', word: 'plain', phonetic: "[plein]", meaning: 'n./adj./adv.平原；清楚的，平常的，直率的；显然地', example: 'She wore a plain white dress.', exampleTranslation: '她穿了一件朴素的白裙子。' },
+                { id: '402', word: 'plate', phonetic: "[pleit]", meaning: 'n.盘子，碟，薄板', example: 'He put the food on a plate.', exampleTranslation: '他把食物放在盘子里。' },
+                { id: '403', word: 'poisonous', phonetic: "[ˈpɔizənəs]", meaning: 'vt./adj.使中毒，毒害；有毒的', example: 'Some mushrooms are poisonous.', exampleTranslation: '有些蘑菇是有毒的。' },
+                { id: '404', word: 'precious', phonetic: "[ˈpreʃəs]", meaning: 'adj.珍贵的', example: 'Time is our most precious resource.', exampleTranslation: '时间是我们最宝贵的资源。' },
+                { id: '405', word: 'promote', phonetic: "[prəu'məut]", meaning: 'vt.促进，晋升，促销', example: 'The company will promote him soon.', exampleTranslation: '公司很快就会提拔他。' },
+                { id: '406', word: 'rebuild', phonetic: "[ˌri:'bild]", meaning: 'vt.重建', example: 'They plan to rebuild the house.', exampleTranslation: '他们计划重建这所房子。' },
+                { id: '407', word: 'recreate', phonetic: "[ˌri:kriˈeit]", meaning: 'vt.再现；再创造', example: 'We tried to recreate the scene.', exampleTranslation: '我们试图重现那个场景。' },
+                { id: '408', word: 'reflect', phonetic: "[riˈflekt]", meaning: 'vt.反射，反映，反思', example: 'The mirror reflects the light.', exampleTranslation: '镜子反射光线。' },
+                { id: '409', word: 'relation', phonetic: "[riˈleiʃn]", meaning: 'n.关系', example: 'There is a relation between diet and health.', exampleTranslation: '饮食和健康之间有关系。' },
+                { id: '410', word: 'relevant', phonetic: "[ˈreləvənt]", meaning: 'adj.相关的', example: 'Please keep your comments relevant.', exampleTranslation: '请保持你的评论切题。' },
+                { id: '411', word: 'relief', phonetic: "[ri'li:f]", meaning: 'n.减轻，宽慰，轻松，解脱', example: 'It was a relief to hear the good news.', exampleTranslation: '听到好消息真是令人宽慰。' },
+                { id: '412', word: 'resistant', phonetic: "[riˈzistənt]", meaning: 'adj.有抵抗力的，抵抗的；顽固的', example: 'This watch is water resistant.', exampleTranslation: '这块手表是防水的。' },
+                { id: '413', word: 'route', phonetic: "[ru:t]", meaning: 'n.路线', example: 'We took the scenic route home.', exampleTranslation: '我们回家的路上走了风景优美的路线。' },
+                { id: '414', word: 'sample', phonetic: "['sɑːmp(ə)l]", meaning: 'n.样本，例子', example: 'Would you like to sample the cheese?', exampleTranslation: '你想尝尝这个奶酪吗？' },
+                { id: '415', word: 'selfish', phonetic: "[ˈselfiʃ]", meaning: 'adj.自私的', example: "Don't be selfish with your toys.", exampleTranslation: '别对你的玩具那么自私。' },
+                { id: '416', word: 'slip', phonetic: "[slip]", meaning: 'n./vi.滑倒，滑落', example: 'Be careful not to slip on the ice.', exampleTranslation: '小心别在冰上滑倒。' },
+                { id: '417', word: 'snack', phonetic: "[snæk]", meaning: 'n./vi.小吃；点心', example: 'I usually have a snack at 3 PM.', exampleTranslation: '我通常在下午3点吃点零食。' },
+                { id: '418', word: 'solar', phonetic: "[ˈsəulə(r)]", meaning: 'adj.太阳的，太阳能的', example: 'We installed solar energy panels.', exampleTranslation: '我们安装了太阳能电池板。' },
+                { id: '419', word: 'spiritual', phonetic: "[ˈspiritʃuəl]", meaning: 'adj.精神上的，心灵的', example: 'Yoga is a spiritual practice for her.', exampleTranslation: '瑜伽对她来说是一种精神修行。' },
+                { id: '420', word: 'stimulate', phonetic: "[ˈstimjuleit]", meaning: 'vt.刺激，激发', example: 'Coffee helps to stimulate the brain.', exampleTranslation: '咖啡有助于刺激大脑。' },
+                { id: '421', word: 'summarize', phonetic: "[ˈsʌməraiz]", meaning: 'vt.总结', example: 'Can you summarize the story?', exampleTranslation: '你能概括一下这个故事吗？' },
+                { id: '422', word: 'talented', phonetic: "[ˈtæləntid]", meaning: 'adj.有才能的，有才干的', example: 'She is a talented musician.', exampleTranslation: '她是一位有才华的音乐家。' },
+                { id: '423', word: 'tease', phonetic: "[ti:z]", meaning: 'v.取笑，逗弄', example: 'It is not nice to tease others.', exampleTranslation: '取笑别人是不好的。' },
+                { id: '424', word: 'tension', phonetic: "['tenʃ(ə)n]", meaning: 'n.（情况、心情）紧张', example: 'There was tension in the room.', exampleTranslation: '房间里气氛紧张。' },
+                { id: '425', word: 'thoughtful', phonetic: "[ˈθɔ:tfəl]", meaning: 'adj.深思熟虑的，体贴的', example: 'That was a very thoughtful gift.', exampleTranslation: '那是一份非常贴心的礼物。' },
+                { id: '426', word: 'tongue', phonetic: "[tʌŋ]", meaning: 'n.舌头，语言', example: 'The doctor asked to see my tongue.', exampleTranslation: '医生要看我的舌头。' },
+                { id: '427', word: 'tough', phonetic: "[tʌf]", meaning: 'adj.艰难的，严厉的，坚强的', example: 'It was a tough decision to make.', exampleTranslation: '这是一个艰难的决定。' },
+                { id: '428', word: 'trial', phonetic: "[ˈtraiəl]", meaning: 'n.审判，试用', example: 'The new drug is undergoing a clinical trial.', exampleTranslation: '这种新药正在进行临床试验。' },
+                { id: '429', word: 'tricky', phonetic: "[ˈtriki]", meaning: 'adj.难办的；难对付的，狡猾的；诡计多端的', example: 'That is a tricky question to answer.', exampleTranslation: '那是一个很难回答的棘手问题。' },
+                { id: '430', word: 'trigger', phonetic: "[ˈtrigə]", meaning: 'n/v.扳机，起因；引起', example: 'Stress can trigger a headache.', exampleTranslation: '压力会引发头痛。' },
+                { id: '431', word: 'undertake', phonetic: "[ˌʌndəˈteik]", meaning: 'vt.承担，着手做，同意', example: 'He will undertake a new project.', exampleTranslation: '他将承担一个新的项目。' },
+                { id: '432', word: 'universe', phonetic: "[ˈju:nivə:s]", meaning: 'n.宇宙，全世界', example: 'The universe is infinite.', exampleTranslation: '宇宙是无限的。' },
+                { id: '433', word: 'upload', phonetic: "[ˌʌpˈləud]", meaning: 'vt.上传', example: 'I need to upload the photos.', exampleTranslation: '我需要上传这些照片。' },
+                { id: '434', word: 'vitamin', phonetic: "[ˈvitəmin]", meaning: 'n.维生素', example: 'Oranges are rich in Vitamin C.', exampleTranslation: '橙子富含维生素C。' },
+                { id: '435', word: 'weapon', phonetic: "['wep(ə)n]", meaning: 'n.武器', example: 'Words can be a powerful weapon.', exampleTranslation: '语言可以成为一种强有力的武器。' },
+                { id: '436', word: 'workload', phonetic: "[ˈwɜ:kləud]", meaning: 'n.（某一人或组织的）工作量，工作负担', example: 'She has a heavy workload this week.', exampleTranslation: '她这周的工作量很大。' },
+                { id: '437', word: 'worthwhile', phonetic: "[wə:θ'wail]", meaning: 'adj.有价值的，值得花时间(或钱、努力等)', example: 'It was a worthwhile experience.', exampleTranslation: '这是一次值得的经历。' },
+            ]
+        };
+
+        const APP_MODES = {
+            DASHBOARD: 'DASHBOARD',
+            LOADING: 'LOADING',
+            LEARNING: 'LEARNING',
+            SUMMARY: 'SUMMARY',
+        };
+
+        // ==========================================
+        // 2. ICONS (SVG Components)
+        // ==========================================
+        
+        const Icons = {
+            BookOpen: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
+            Zap: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+            Layers: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
+            Volume2: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>,
+            CheckCircle: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+            RotateCcw: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>,
+            Trophy: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17"/><path d="M14 14.66V17"/><path d="M18 22l-.92-5.92A13.72 13.72 0 0 0 8.08 16.08L7.16 22"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
+            ArrowRight: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+            X: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            Sparkles: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>,
+            Clock: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            Calendar: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+            Target: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+            History: (props) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/></svg>
+        };
+
+        // ==========================================
+        // 3. UTILITIES
+        // ==========================================
+        
+        // --- Storage Keys ---
+        const STATS_KEY = 'lingoflash_stats';
+        const API_KEY_KEY = 'lingoflash_api_key';
+        const PLAN_KEY = 'lingoflash_plan';
+        const LEARNED_KEY = 'lingoflash_learned'; // { [dictName]: [id1, id2...] }
+        const HISTORY_KEY = 'lingoflash_history'; // [{ date, dictionary, count, wordListString }]
+
+        const getStats = () => {
+            try {
+                const stored = localStorage.getItem(STATS_KEY);
+                return stored ? JSON.parse(stored) : { totalLearned: 0, streakDays: 0, lastStudyDate: new Date().toISOString() };
+            } catch (e) {
+                return { totalLearned: 0, streakDays: 0, lastStudyDate: new Date().toISOString() };
+            }
+        };
+
+        const saveStats = (newStats) => {
+            const current = getStats();
+            const today = new Date().toISOString().split('T')[0];
+            const lastDate = current.lastStudyDate.split('T')[0];
+            
+            let streak = current.streakDays;
+            if (today !== lastDate) {
+                const diffTime = Math.abs(new Date(today).getTime() - new Date(lastDate).getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                if (diffDays === 1) streak++;
+                else if (diffDays > 1) streak = 1;
+                else if (streak === 0) streak = 1;
+            }
+
+            const updated = { ...current, ...newStats, streakDays: streak, lastStudyDate: new Date().toISOString() };
+            try { localStorage.setItem(STATS_KEY, JSON.stringify(updated)); } catch(e){}
+            return updated;
+        };
+
+        const getLearnedWords = () => {
+            try { return JSON.parse(localStorage.getItem(LEARNED_KEY) || '{}'); } catch(e) { return {}; }
+        };
+
+        const saveLearnedWords = (dict, newIds) => {
+            const all = getLearnedWords();
+            const current = all[dict] || [];
+            // Merge unique
+            const updated = [...new Set([...current, ...newIds])];
+            all[dict] = updated;
+            localStorage.setItem(LEARNED_KEY, JSON.stringify(all));
+            return all;
+        };
+
+        const getPlan = () => {
+            try { return JSON.parse(localStorage.getItem(PLAN_KEY)); } catch (e) { return null; }
+        };
+
+        const savePlan = (plan) => {
+            localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+        };
+
+        const getHistory = () => {
+            try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { return []; }
+        };
+
+        const saveHistory = (record) => {
+            const history = getHistory();
+            // Add to top
+            history.unshift(record);
+            // Limit history to 50 items to save space
+            if (history.length > 50) history.pop();
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        };
+
+        const getStoredApiKey = () => localStorage.getItem(API_KEY_KEY) || '';
+        const setStoredApiKey = (key) => localStorage.setItem(API_KEY_KEY, key);
+
+        // --- Generator Service ---
+        const generateWords = async (dictionary, count, apiKey, excludeIds = []) => {
+            // 1. If no API key, use static data
+            if (!apiKey) {
+                console.log("Using static library for:", dictionary);
+                const list = STATIC_LIBRARY[dictionary] || STATIC_LIBRARY[DICTIONARY_TYPES.CORE];
+                
+                // Filter out learned words if plan mode
+                const available = list.filter(w => !excludeIds.includes(w.id));
+                
+                if (available.length === 0) {
+                   throw new Error("ALL_LEARNED");
+                }
+
+                // Shuffle and slice
+                const shuffled = [...available].sort(() => 0.5 - Math.random());
+                return shuffled.slice(0, count);
+            }
+
+            // 2. If API Key exists, use Gemini REST API (No SDK needed)
+            const prompt = `Generate a JSON array of ${count} English vocabulary words for "${dictionary}". Schema: [{"id":"...","word":"...","phonetic":"...","meaning":"...","example":"...","exampleTranslation":"..."}]. No markdown.`;
+            
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+                
+                const data = await response.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!text) throw new Error("API returned empty");
+                
+                return JSON.parse(text);
+            } catch (error) {
+                console.error("Gemini API Error, falling back to static", error);
+                alert("API Error. Switching to offline mode.");
+                return generateWords(dictionary, count, "", excludeIds); // Fallback
+            }
+        };
+
+        // ==========================================
+        // 4. UI COMPONENTS
+        // ==========================================
+
+        const Button = ({ children, variant = 'primary', fullWidth = false, className = '', ...props }) => {
+            const baseStyles = "px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 active:scale-95";
+            const variants = {
+                primary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200",
+                secondary: "bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-200",
+                success: "bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-200",
+                danger: "bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-200",
+                outline: "border-2 border-gray-200 text-gray-700 hover:bg-gray-50",
+                text: "text-gray-500 hover:text-indigo-600 hover:bg-indigo-50",
+            };
+            return (
+                <button className={`${baseStyles} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${className}`} {...props}>
+                    {children}
+                </button>
+            );
+        };
+
+        const Flashcard = ({ data }) => {
+            const [playingType, setPlayingType] = useState(null);
+            const autoPlayRef = useRef(null);
+            const [canSpeak, setCanSpeak] = useState(false);
+
+            // Ensure voices are loaded (Chrome/Safari quirk)
+            useEffect(() => {
+                const handleVoices = () => {
+                     if (window.speechSynthesis) setCanSpeak(true);
+                };
+                if (window.speechSynthesis) {
+                     window.speechSynthesis.onvoiceschanged = handleVoices;
+                     setCanSpeak(true);
+                }
+                return () => {
+                     if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null;
+                }
+            }, []);
+
+            const speak = (text, type) => {
+                if (!window.speechSynthesis) return;
+                window.speechSynthesis.cancel();
+                
+                const u = new SpeechSynthesisUtterance(text);
+                const voices = window.speechSynthesis.getVoices();
+                const enVoice = voices.find(v => v.lang.startsWith('en'));
+                if (enVoice) u.voice = enVoice;
+                u.lang = 'en-US';
+                u.rate = 0.8;
+                u.onstart = () => setPlayingType(type);
+                u.onend = () => setPlayingType(null);
+                u.onerror = () => setPlayingType(null);
+                
+                window.currentUtterance = u; // Prevent GC
+                window.speechSynthesis.speak(u);
+            };
+
+            const manualPlay = (text, type) => {
+                if (autoPlayRef.current) clearTimeout(autoPlayRef.current);
+                speak(text, type);
+            };
+
+            useEffect(() => {
+                window.speechSynthesis.cancel();
+                setPlayingType(null);
+                autoPlayRef.current = setTimeout(() => {
+                    speak(data.word, 'word');
+                }, 1000);
+                return () => {
+                    if (autoPlayRef.current) clearTimeout(autoPlayRef.current);
+                    window.speechSynthesis.cancel();
+                };
+            }, [data.id]);
+
+            return (
+                <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md mx-auto min-h-[450px] flex flex-col relative animate-fade-in overflow-hidden">
+                    <div className="h-2 w-full bg-indigo-500"></div>
+                    <div className="p-8 flex-1 flex flex-col items-center text-center space-y-6">
+                        <div className="space-y-2 mt-4">
+                            <h2 className="text-5xl font-extrabold text-gray-900">{data.word}</h2>
+                            <div className="flex items-center justify-center gap-3">
+                                <span className="text-xl text-gray-500 font-mono bg-gray-100 px-3 py-1 rounded-full">{data.phonetic}</span>
+                                <button onClick={() => manualPlay(data.word, 'word')} className={`p-2 rounded-full transition-all ${playingType === 'word' ? 'bg-indigo-600 text-white scale-110' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}>
+                                    <Icons.Volume2 size={24} className={playingType === 'word' ? 'animate-pulse' : ''} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="w-full pt-4 border-t border-gray-100">
+                            <p className="text-2xl font-bold text-gray-800">{data.meaning}</p>
+                        </div>
+                        <div className="w-full bg-gray-50 rounded-xl p-5 text-left space-y-3 mt-auto">
+                            <div className="flex justify-between items-start">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Example</span>
+                                <button onClick={() => manualPlay(data.example, 'sentence')} className={`transition-colors ${playingType === 'sentence' ? 'text-indigo-600' : 'text-indigo-400'}`}>
+                                    <Icons.Volume2 size={20} className={playingType === 'sentence' ? 'animate-pulse' : ''} />
+                                </button>
+                            </div>
+                            <p className="text-lg text-gray-800 font-medium">"{data.example}"</p>
+                            <p className="text-gray-500 italic">{data.exampleTranslation}</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const HistoryItem = ({ item }) => {
+            const date = new Date(item.date).toLocaleDateString();
+            const time = new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            return (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col gap-2">
+                    <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                        <div className="flex items-center gap-2 text-gray-500 text-sm">
+                             <Icons.Calendar size={14} /> {date} <Icons.Clock size={14} className="ml-2"/> {time}
+                        </div>
+                        <span className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md text-xs font-bold">{item.dictionary}</span>
+                    </div>
+                    <div>
+                        <span className="text-gray-900 font-bold text-lg">{item.count} Words</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                        {item.words && item.words.slice(0, 5).map((w, i) => (
+                            <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">{w.word}</span>
+                        ))}
+                        {item.words && item.words.length > 5 && <span className="text-xs text-gray-400 px-2 py-1">+{item.words.length - 5} more</span>}
+                    </div>
+                </div>
+            )
+        }
+
+        const Dashboard = ({ onStart, stats }) => {
+            const [activeTab, setActiveTab] = useState('home'); // home | history
+            const [plan, setPlan] = useState(getPlan());
+            const [history, setHistory] = useState([]);
+            const [learnedData, setLearnedData] = useState(getLearnedWords());
+            
+            // Edit Plan State
+            const [isEditingPlan, setIsEditingPlan] = useState(false);
+            const [newPlanDict, setNewPlanDict] = useState(DICTIONARY_TYPES.CORE);
+            const [newPlanCount, setNewPlanCount] = useState(10);
+            
+            // Legacy/Free Mode State
+            const [freeDict, setFreeDict] = useState(DICTIONARY_TYPES.CORE);
+            const [freeCount, setFreeCount] = useState(5);
+            const [apiKey, setApiKey] = useState(getStoredApiKey());
+            const [showApiInput, setShowApiInput] = useState(false);
+
+            useEffect(() => {
+                if (activeTab === 'history') {
+                    setHistory(getHistory());
+                }
+                setLearnedData(getLearnedWords());
+            }, [activeTab]);
+
+            const handleCreatePlan = () => {
+                const newPlan = { dictionary: newPlanDict, dailyGoal: newPlanCount, createdAt: new Date().toISOString() };
+                savePlan(newPlan);
+                setPlan(newPlan);
+                setIsEditingPlan(false);
+            };
+
+            const startPlanSession = () => {
+                onStart(plan.dictionary, plan.dailyGoal, '', true); // true = usePlan (exclude learned)
+            };
+
+            const startFreeSession = () => {
+                setStoredApiKey(apiKey);
+                onStart(freeDict, freeCount, apiKey, false);
+            };
+
+            const getProgress = (dictName) => {
+                const total = STATIC_LIBRARY[dictName]?.length || 0;
+                const learned = learnedData[dictName]?.length || 0;
+                const pct = total > 0 ? Math.round((learned / total) * 100) : 0;
+                return { total, learned, pct };
+            };
+
+            const planProgress = plan ? getProgress(plan.dictionary) : { total: 0, learned: 0, pct: 0 };
+
+            return (
+                <div className="min-h-screen bg-gray-50 pb-20">
+                    {/* Header */}
+                    <div className="bg-white p-6 shadow-sm rounded-b-3xl mb-6">
+                         <div className="flex justify-between items-center">
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-900">LingoFlash AI</h1>
+                                <p className="text-gray-500 text-sm">Dashboard</p>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="text-center">
+                                    <p className="text-xl font-bold text-gray-900">{stats.streakDays} 🔥</p>
+                                    <p className="text-[10px] text-gray-400 uppercase">Streak</p>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+
+                    <div className="max-w-md mx-auto px-4 space-y-6">
+                        
+                        {/* TABS CONTENT */}
+                        {activeTab === 'home' && (
+                            <>
+                                {/* PLAN SECTION */}
+                                <div className="space-y-4">
+                                    <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Icons.Target size={20} className="text-indigo-600"/> Your Study Plan</h2>
+                                    
+                                    {!plan || isEditingPlan ? (
+                                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 animate-fade-in">
+                                            <h3 className="font-semibold text-gray-900 mb-4">{plan ? 'Edit Plan' : 'Create New Plan'}</h3>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-sm text-gray-600 mb-1">Target Dictionary</label>
+                                                    <select value={newPlanDict} onChange={e=>setNewPlanDict(e.target.value)} className="w-full p-2 bg-gray-50 rounded-lg border">
+                                                        {Object.values(DICTIONARY_TYPES).map(d => <option key={d} value={d}>{d}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm text-gray-600 mb-1">Daily Goal (Words)</label>
+                                                    <input type="range" min="10" max="100" step="10" value={newPlanCount} onChange={e=>setNewPlanCount(Number(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+                                                    <div className="text-right text-indigo-600 font-bold">{newPlanCount} words</div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    {plan && <Button variant="text" fullWidth onClick={()=>setIsEditingPlan(false)}>Cancel</Button>}
+                                                    <Button fullWidth onClick={handleCreatePlan}>Save Plan</Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-indigo-500 animate-fade-in relative overflow-hidden">
+                                            <div className="relative z-10">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <span className="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded font-bold uppercase tracking-wider">Active Plan</span>
+                                                        <h3 className="text-xl font-bold text-gray-900 mt-1">{plan.dictionary}</h3>
+                                                    </div>
+                                                    <button onClick={()=>setIsEditingPlan(true)} className="text-gray-400 hover:text-indigo-600"><Icons.BookOpen size={18}/></button>
+                                                </div>
+                                                
+                                                <div className="mb-6">
+                                                    <div className="flex justify-between text-sm mb-1 text-gray-600">
+                                                        <span>Progress</span>
+                                                        <span className="font-bold">{planProgress.learned} / {planProgress.total}</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-100 rounded-full h-3">
+                                                        <div className="bg-indigo-500 h-3 rounded-full transition-all duration-1000" style={{width: `${planProgress.pct}%`}}></div>
+                                                    </div>
+                                                    <p className="text-xs text-right mt-1 text-indigo-500 font-bold">{planProgress.pct}% Mastery</p>
+                                                </div>
+
+                                                <Button fullWidth onClick={startPlanSession}><Icons.Zap size={18}/> Start Today's Session ({plan.dailyGoal})</Button>
+                                            </div>
+                                            <Icons.Sparkles className="absolute -bottom-4 -right-4 text-indigo-50 opacity-50" size={120} />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* QUICK START (FREE MODE) */}
+                                <div className="pt-6 border-t border-gray-200">
+                                    <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Icons.Layers size={20} className="text-amber-500"/> Quick Practice</h2>
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <select value={freeDict} onChange={e => setFreeDict(e.target.value)} className="p-2 bg-gray-50 rounded-lg text-sm border outline-none">
+                                                {Object.values(DICTIONARY_TYPES).map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                            <select value={freeCount} onChange={e => setFreeCount(Number(e.target.value))} className="p-2 bg-gray-50 rounded-lg text-sm border outline-none">
+                                                {[5, 10, 20, 30, 50, 80, 100].map(n => <option key={n} value={n}>{n} Words</option>)}
+                                            </select>
+                                        </div>
+                                        
+                                        <div className="flex items-center justify-between">
+                                             <button onClick={() => setShowApiInput(!showApiInput)} className="text-xs text-indigo-500 font-medium">
+                                                {showApiInput ? "Hide API" : "+ Use Gemini API"}
+                                            </button>
+                                            <Button variant="secondary" className="px-8 py-2 text-sm h-10" onClick={startFreeSession}>Start</Button>
+                                        </div>
+                                        {showApiInput && (
+                                            <input 
+                                                type="password" 
+                                                placeholder="Enter API Key" 
+                                                value={apiKey} 
+                                                onChange={e => setApiKey(e.target.value)}
+                                                className="w-full p-2 text-xs border rounded bg-gray-50"
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {activeTab === 'history' && (
+                            <div className="space-y-4 animate-fade-in">
+                                <h2 className="text-lg font-bold text-gray-800">Study History</h2>
+                                {history.length === 0 ? (
+                                    <div className="text-center py-10 text-gray-400">
+                                        <Icons.History size={48} className="mx-auto mb-2 opacity-20"/>
+                                        <p>No study records yet.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {history.map((item, idx) => <HistoryItem key={idx} item={item} />)}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Bottom Navigation */}
+                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 flex justify-around items-center pb-safe">
+                        <button onClick={()=>setActiveTab('home')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${activeTab==='home' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-400'}`}>
+                            <Icons.Layers size={24} />
+                            <span className="text-[10px] font-bold">Dashboard</span>
+                        </button>
+                        <button onClick={()=>setActiveTab('history')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${activeTab==='history' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-400'}`}>
+                            <Icons.History size={24} />
+                            <span className="text-[10px] font-bold">History</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 5. MAIN APP COMPONENT
+        // ==========================================
+
+        const App = () => {
+            const [mode, setMode] = useState(APP_MODES.DASHBOARD);
+            const [queue, setQueue] = useState([]);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [stats, setStats] = useState({ totalLearned: 0, streakDays: 0 });
+            
+            // Session Tracking
+            const [sessionWords, setSessionWords] = useState([]); // Track words mastered in this session
+            const [currentDictionary, setCurrentDictionary] = useState('');
+            
+            const [loadingText, setLoadingText] = useState('');
+            const [showExit, setShowExit] = useState(false);
+
+            useEffect(() => { setStats(getStats()); }, []);
+
+            const startSession = async (dict, count, apiKey, usePlan) => {
+                setMode(APP_MODES.LOADING);
+                setLoadingText(apiKey ? "AI Generating..." : "Building Session...");
+                try {
+                    // Small delay to show loading state
+                    await new Promise(r => setTimeout(r, 600));
+                    
+                    let excludeIds = [];
+                    if (usePlan) {
+                         const learned = getLearnedWords();
+                         excludeIds = learned[dict] || [];
+                    }
+
+                    const words = await generateWords(dict, count, apiKey, excludeIds);
+                    
+                    setQueue(words);
+                    setCurrentIndex(0);
+                    setSessionWords([]); // Reset session tracking
+                    setCurrentDictionary(dict);
+                    setMode(APP_MODES.LEARNING);
+                } catch (e) {
+                    if (e.message === 'ALL_LEARNED') {
+                        alert("Congratulations! You have learned all words in this dictionary plan.");
+                    } else {
+                        alert("Error loading words: " + e.message);
+                    }
+                    setMode(APP_MODES.DASHBOARD);
+                }
+            };
+
+            const handleRemember = () => {
+                // Add current word to session mastery list
+                const word = queue[currentIndex];
+                setSessionWords(prev => [...prev, { id: word.id, word: word.word, meaning: word.meaning }]);
+                
+                if (currentIndex < queue.length - 1) setCurrentIndex(p => p + 1);
+                else finishSession([...sessionWords, { id: word.id, word: word.word, meaning: word.meaning }]); // Pass final list immediately
+            };
+
+            const handleReview = () => {
+                setQueue(prev => [...prev, queue[currentIndex]]);
+                setCurrentIndex(p => p + 1);
+            };
+
+            const finishSession = (finalSessionWords = sessionWords) => {
+                // 1. Update Stats
+                setStats(saveStats({ totalLearned: stats.totalLearned + finalSessionWords.length }));
+                
+                // 2. Save History
+                if (finalSessionWords.length > 0) {
+                    saveHistory({
+                        date: new Date().toISOString(),
+                        dictionary: currentDictionary,
+                        count: finalSessionWords.length,
+                        words: finalSessionWords
+                    });
+
+                    // 3. Update Learned IDs (Persist mastery)
+                    const masteredIds = finalSessionWords.map(w => w.id);
+                    saveLearnedWords(currentDictionary, masteredIds);
+                }
+
+                setMode(APP_MODES.SUMMARY);
+            };
+
+            const confirmExit = () => {
+                // Save what we have so far
+                if (sessionWords.length > 0) {
+                    finishSession(sessionWords);
+                } else {
+                    setMode(APP_MODES.DASHBOARD);
+                }
+                setShowExit(false);
+            };
+
+            if (mode === APP_MODES.LOADING) {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+                        <Icons.Sparkles className="text-indigo-500 animate-pulse mb-4" size={48} />
+                        <h2 className="text-xl font-bold text-gray-800">{loadingText}</h2>
+                    </div>
+                );
+            }
+
+            if (mode === APP_MODES.DASHBOARD) {
+                return <Dashboard onStart={startSession} stats={stats} />;
+            }
+
+            if (mode === APP_MODES.SUMMARY) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-6 bg-emerald-50">
+                        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center space-y-6 animate-fade-in">
+                            <div className="mx-auto bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center text-emerald-600">
+                                <Icons.Trophy size={40} />
+                            </div>
+                            <h2 className="text-3xl font-bold text-gray-900">Session Complete!</h2>
+                            <p className="text-gray-600">You mastered <span className="font-bold text-emerald-600 text-xl">{sessionWords.length}</span> new words.</p>
+                            <div className="flex flex-wrap justify-center gap-2 max-h-32 overflow-y-auto">
+                                {sessionWords.map((w,i) => <span key={i} className="text-xs bg-gray-100 px-2 py-1 rounded">{w.word}</span>)}
+                            </div>
+                            <Button fullWidth onClick={() => setMode(APP_MODES.DASHBOARD)}>Back to Dashboard</Button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Learning Mode
+            const currentCard = queue[currentIndex];
+            const left = queue.length - currentIndex;
+
+            return (
+                <div className="min-h-screen flex flex-col items-center p-4 bg-gray-100 relative">
+                    {showExit && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+                                <h3 className="text-lg font-bold">End Session?</h3>
+                                <p className="text-sm text-gray-600">Progress for {sessionWords.length} words will be saved.</p>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" fullWidth onClick={() => setShowExit(false)}>Cancel</Button>
+                                    <Button variant="danger" fullWidth onClick={confirmExit}>Exit</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="w-full max-w-lg flex flex-col h-full gap-6">
+                        <div className="flex items-center gap-4 w-full mt-4">
+                            <button onClick={() => setShowExit(true)} className="p-2 text-gray-400 hover:text-gray-700 bg-white rounded-full shadow-sm"><Icons.X size={20}/></button>
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div className="bg-indigo-600 h-2 rounded-full transition-all duration-300" style={{ width: `${(currentIndex / queue.length) * 100}%` }}></div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 flex items-center justify-center w-full">
+                            {currentCard && <Flashcard key={currentCard.id} data={currentCard} />}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pb-8">
+                            <Button variant="secondary" onClick={handleReview} className="h-14"><Icons.RotateCcw size={18}/> Review</Button>
+                            <Button variant="success" onClick={handleRemember} className="h-14"><Icons.CheckCircle size={18}/> Remember</Button>
+                        </div>
+                        <p className="text-center text-xs text-gray-400 -mt-6">{left} cards in queue</p>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手持弹幕LED生成器</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #ffffff;
+            --bg-card: #f5f5f5;
+            --primary: #00aa55;
+            --primary-dim: #008844;
+            --accent: #ff3366;
+            --text: #333333;
+            --text-dim: #666;
+            --border: #ddd;
+            --input-bg: #fff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            color: #1a1a1a;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        .container {
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(0, 255, 136, 0.08);
+        }
+
+        .led-preview {
+            background: #000;
+            border-radius: 12px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid #1a1a1a;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .led-preview::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.1) 2px,
+                    rgba(0, 0, 0, 0.1) 4px
+                );
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .led-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 48px;
+            white-space: nowrap;
+            position: absolute;
+            will-change: transform;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .text-input {
+            width: 100%;
+            height: 48px;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0 16px;
+            font-size: 16px;
+            color: var(--text);
+            font-family: 'Noto Sans SC', sans-serif;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 12px rgba(0, 255, 136, 0.2);
+        }
+
+        .text-input::placeholder {
+            color: var(--text-dim);
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .speed-slider {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            transition: transform 0.2s;
+        }
+
+        .speed-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .speed-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .speed-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            color: var(--primary);
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .color-picker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .color-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .color-btn.active {
+            border-color: #fff;
+            transform: scale(1.1);
+        }
+
+        .color-btn[data-color="red"] { background: #ff0000; box-shadow: 0 0 8px #ff0000; }
+        .color-btn[data-color="blue"] { background: #0066ff; box-shadow: 0 0 8px #0066ff; }
+        .color-btn[data-color="green"] { background: #00ff00; box-shadow: 0 0 8px #00ff00; }
+        .color-btn[data-color="yellow"] { background: #ffff00; box-shadow: 0 0 8px #ffff00; }
+        .color-btn[data-color="white"] { background: #ffffff; box-shadow: 0 0 8px #ffffff; }
+        .color-btn[data-color="pink"] { background: #ff66b2; box-shadow: 0 0 8px #ff66b2; }
+        .color-btn[data-color="purple"] { background: #9900ff; box-shadow: 0 0 8px #9900ff; }
+        .color-btn[data-color="cyan"] { background: #00ffff; box-shadow: 0 0 8px #00ffff; }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            height: 48px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dim) 100%);
+            border: none;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 12px rgba(0, 170, 85, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 170, 85, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #videoCanvas {
+            display: none;
+        }
+
+        .generating {
+            position: relative;
+        }
+
+        .generating::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        footer {
+            margin-top: 24px;
+            font-size: 12px;
+            color: var(--text-dim);
+            text-align: center;
+        }
+
+        .recording-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: none;
+            animation: pulse 1s infinite;
+        }
+
+        .recording-indicator.active {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .recording-dot {
+            width: 8px;
+            height: 8px;
+            background: #fff;
+            border-radius: 50%;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .fullscreen-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-container.active {
+            display: flex;
+        }
+
+        .fullscreen-container canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .fullscreen-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            z-index: 1001;
+        }
+
+        .fullscreen-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 16px;
+            }
+            
+            h1 {
+                font-size: 22px;
+            }
+
+            .led-preview {
+                height: 160px;
+            }
+
+            .led-text {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>手持弹幕LED生成器</h1>
+        <p class="subtitle">为你的LED手持牌创建炫酷弹幕</p>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <div class="led-preview" id="ledPreview">
+                <canvas id="previewCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="control-group">
+                <label class="control-label">弹幕内容</label>
+                <input type="text" class="text-input" id="textInput" placeholder="输入你想显示的文字..." maxlength="100" value="加油！">
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">滚动速度</label>
+                <div class="speed-control">
+                    <span>慢</span>
+                    <input type="range" class="speed-slider" id="speedSlider" min="1" max="30" value="5">
+                    <span>快</span>
+                    <span class="speed-value" id="speedValue">5</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">文字颜色</label>
+                <div class="color-picker" id="colorPicker">
+                    <button class="color-btn active" data-color="red" title="红色"></button>
+                    <button class="color-btn" data-color="blue" title="蓝色"></button>
+                    <button class="color-btn" data-color="green" title="绿色"></button>
+                    <button class="color-btn" data-color="yellow" title="黄色"></button>
+                    <button class="color-btn" data-color="white" title="白色"></button>
+                    <button class="color-btn" data-color="pink" title="粉色"></button>
+                    <button class="color-btn" data-color="purple" title="紫色"></button>
+                    <button class="color-btn" data-color="cyan" title="青色"></button>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="previewBtn">
+                    <span>预览</span>
+                </button>
+                <button class="btn btn-secondary" id="fullscreenBtn">
+                    <span>全屏</span>
+                </button>
+                <button class="btn btn-primary" id="generateBtn">
+                    <span>生成视频</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="recording-indicator" id="recordingIndicator">
+        <span class="recording-dot"></span>
+        <span>录制中...</span>
+    </div>
+
+    <footer>
+        使用浏览器原生API生成视频，无需服务器
+    </footer>
+
+    <canvas id="videoCanvas" width="480" height="240"></canvas>
+
+    <script>
+        const colorMap = {
+            red: '#ff0000',
+            blue: '#0066ff',
+            green: '#00ff00',
+            yellow: '#ffff00',
+            white: '#ffffff',
+            pink: '#ff66b2',
+            purple: '#9900ff',
+            cyan: '#00ffff'
+        };
+
+        let state = {
+            text: '加油！',
+            speed: 5,
+            color: 'red',
+            isPlaying: false,
+            position: 480,
+            fullscreenPosition: 480,
+            animationId: null
+        };
+
+        const textInput = document.getElementById('textInput');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        const colorPicker = document.getElementById('colorPicker');
+        const previewBtn = document.getElementById('previewBtn');
+        const generateBtn = document.getElementById('generateBtn');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const videoCanvas = document.getElementById('videoCanvas');
+        const recordingIndicator = document.getElementById('recordingIndicator');
+
+        const previewCtx = previewCanvas.getContext('2d');
+        const videoCtx = videoCanvas.getContext('2d');
+
+        function initCanvas() {
+            const rect = previewCanvas.parentElement.getBoundingClientRect();
+            previewCanvas.width = rect.width;
+            previewCanvas.height = rect.height;
+        }
+
+        function drawLEDText(ctx, canvas, text, x, color) {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const fontSize = canvas.height * 0.6;
+            ctx.font = `bold ${fontSize}px "Share Tech Mono", monospace`;
+            ctx.textBaseline = 'middle';
+            
+            const colorHex = colorMap[color];
+            
+            ctx.shadowColor = colorHex;
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = colorHex;
+            
+            const y = canvas.height / 2;
+            ctx.fillText(text, x, y);
+            
+            ctx.shadowBlur = 10;
+            ctx.fillText(text, x, y);
+            
+            ctx.shadowBlur = 0;
+        }
+
+        function animate(isPreview = true) {
+            const ctx = isPreview ? previewCtx : videoCtx;
+            const canvas = isPreview ? previewCanvas : videoCanvas;
+
+            drawLEDText(ctx, canvas, state.text, state.position, state.color);
+
+            state.position -= state.speed;
+
+            const textWidth = ctx.measureText(state.text).width;
+            if (state.position < -textWidth) {
+                state.position = canvas.width;
+            }
+        }
+
+        function startAnimation(isPreview = true) {
+            if (state.animationId) {
+                cancelAnimationFrame(state.animationId);
+            }
+            
+            state.position = isPreview ? previewCanvas.width : videoCanvas.width;
+            
+            function loop() {
+                animate(isPreview);
+                if (state.isPlaying) {
+                    state.animationId = requestAnimationFrame(loop);
+                }
+            }
+            
+            state.isPlaying = true;
+            loop();
+        }
+
+        function stopAnimation() {
+            state.isPlaying = false;
+            if (state.animationId) {
+                cancelAnimationFrame(state.animationId);
+                state.animationId = null;
+            }
+        }
+
+        textInput.addEventListener('input', (e) => {
+            state.text = e.target.value || ' ';
+            if (state.isPlaying) {
+                startAnimation(true);
+            }
+        });
+
+        speedSlider.addEventListener('input', (e) => {
+            state.speed = parseInt(e.target.value);
+            speedValue.textContent = state.speed;
+        });
+
+        colorPicker.addEventListener('click', (e) => {
+            if (e.target.classList.contains('color-btn')) {
+                document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                state.color = e.target.dataset.color;
+            }
+        });
+
+        previewBtn.addEventListener('click', () => {
+            if (state.isPlaying) {
+                stopAnimation();
+                previewBtn.querySelector('span').textContent = '预览';
+            } else {
+                initCanvas();
+                startAnimation(true);
+                previewBtn.querySelector('span').textContent = '停止';
+            }
+        });
+
+        // 全屏功能 - 使用浏览器原生Fullscreen API
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        let isFullscreenMode = false;
+        let fullscreenAnimationId = null;
+        let originalCanvasWidth = 0;
+        let originalCanvasHeight = 0;
+
+        function drawFullscreenLED() {
+            previewCtx.fillStyle = '#000';
+            previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+
+            const fontSize = previewCanvas.height * 0.3;
+            previewCtx.font = `bold ${fontSize}px "Share Tech Mono", monospace`;
+            previewCtx.textBaseline = 'middle';
+
+            const colorHex = colorMap[state.color];
+
+            previewCtx.shadowColor = colorHex;
+            previewCtx.shadowBlur = 30;
+            previewCtx.fillStyle = colorHex;
+
+            const y = previewCanvas.height / 2;
+            previewCtx.fillText(state.text, state.fullscreenPosition, y);
+
+            previewCtx.shadowBlur = 15;
+            previewCtx.fillText(state.text, state.fullscreenPosition, y);
+
+            previewCtx.shadowBlur = 0;
+        }
+
+        function animateFullscreen() {
+            if (!isFullscreenMode) return;
+
+            drawFullscreenLED();
+
+            state.fullscreenPosition -= state.speed;
+
+            const textWidth = previewCtx.measureText(state.text).width;
+            if (state.fullscreenPosition < -textWidth) {
+                state.fullscreenPosition = previewCanvas.width;
+            }
+
+            fullscreenAnimationId = requestAnimationFrame(animateFullscreen);
+        }
+
+        async function openFullscreen() {
+            try {
+                if (state.isPlaying) {
+                    stopAnimation();
+                    previewBtn.querySelector('span').textContent = '预览';
+                }
+
+                originalCanvasWidth = previewCanvas.width;
+                originalCanvasHeight = previewCanvas.height;
+
+                if (previewCanvas.requestFullscreen) {
+                    await previewCanvas.requestFullscreen();
+                } else if (previewCanvas.webkitRequestFullscreen) {
+                    await previewCanvas.webkitRequestFullscreen();
+                } else if (previewCanvas.msRequestFullscreen) {
+                    await previewCanvas.msRequestFullscreen();
+                }
+            } catch (err) {
+                console.error('全屏请求失败:', err);
+                previewCanvas.width = originalCanvasWidth;
+                previewCanvas.height = originalCanvasHeight;
+                alert('无法进入全屏模式，请检查浏览器设置');
+            }
+        }
+
+        function closeFullscreen() {
+            isFullscreenMode = false;
+
+            if (fullscreenAnimationId) {
+                cancelAnimationFrame(fullscreenAnimationId);
+                fullscreenAnimationId = null;
+            }
+
+            previewCanvas.style.position = '';
+            previewCanvas.style.top = '';
+            previewCanvas.style.left = '';
+            previewCanvas.style.zIndex = '';
+            previewCanvas.style.width = '';
+            previewCanvas.style.height = '';
+            previewCanvas.width = originalCanvasWidth;
+            previewCanvas.height = originalCanvasHeight;
+
+            fullscreenBtn.querySelector('span').textContent = '全屏';
+        }
+
+        function onFullscreenChange() {
+            const isFullscreen = !!document.fullscreenElement;
+
+            if (isFullscreen) {
+                isFullscreenMode = true;
+                previewCanvas.style.position = 'fixed';
+                previewCanvas.style.top = '0';
+                previewCanvas.style.left = '0';
+                previewCanvas.style.zIndex = '9999';
+                previewCanvas.style.width = '100vw';
+                previewCanvas.style.height = '100vh';
+                previewCanvas.width = window.innerWidth;
+                previewCanvas.height = window.innerHeight;
+                state.fullscreenPosition = previewCanvas.width;
+                fullscreenBtn.querySelector('span').textContent = '退出全屏';
+                animateFullscreen();
+            } else {
+                closeFullscreen();
+            }
+        }
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (isFullscreenMode || document.fullscreenElement) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            } else {
+                openFullscreen();
+            }
+        });
+
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+        document.addEventListener('msfullscreenchange', onFullscreenChange);
+
+        generateBtn.addEventListener('click', async () => {
+            generateBtn.disabled = true;
+            generateBtn.classList.add('generating');
+            recordingIndicator.classList.add('active');
+            
+            try {
+                const stream = videoCanvas.captureStream(30);
+                const mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp9'
+                });
+                
+                const chunks = [];
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        chunks.push(e.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `led-banner-${Date.now()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    generateBtn.disabled = false;
+                    generateBtn.classList.remove('generating');
+                    recordingIndicator.classList.remove('active');
+                    stopAnimation();
+                    
+                    alert('视频生成成功！已自动下载。');
+                };
+                
+                mediaRecorder.start();
+                
+                state.position = videoCanvas.width;
+                state.isPlaying = true;
+                
+                const startTime = Date.now();
+                const textWidth = videoCtx.measureText(state.text).width;
+                const duration = ((textWidth + videoCanvas.width) / state.speed) * (1000 / 30) + 2000;
+                
+                function recordFrame() {
+                    if (!state.isPlaying) return;
+                    
+                    animate(false);
+                    
+                    if (Date.now() - startTime < duration) {
+                        requestAnimationFrame(recordFrame);
+                    } else {
+                        mediaRecorder.stop();
+                        state.isPlaying = false;
+                    }
+                }
+                
+                recordFrame();
+                
+            } catch (error) {
+                console.error('生成视频失败:', error);
+                alert('生成视频失败，请确保浏览器支持 MediaRecorder API');
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('generating');
+                recordingIndicator.classList.remove('active');
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (isFullscreenMode) {
+                // 全屏模式下更新canvas尺寸
+                previewCanvas.width = window.innerWidth;
+                previewCanvas.height = window.innerHeight;
+            } else {
+                initCanvas();
+                if (state.isPlaying) {
+                    drawLEDText(previewCtx, previewCanvas, state.text, state.position, state.color);
+                }
+            }
+        });
+
+        initCanvas();
+        drawLEDText(previewCtx, previewCanvas, state.text, previewCanvas.width / 2 - 50, state.color);
+    </script>
+</body>
+</html>

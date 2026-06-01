@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24点游戏求解器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .input-section label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 14px 18px;
+            font-size: 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        button {
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result-section {
+            min-height: 200px;
+        }
+
+        .placeholder {
+            text-align: center;
+            color: #999;
+            padding: 60px 20px;
+            font-size: 16px;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .input-display {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .success {
+            color: #28a745;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #d4edda;
+            border-radius: 8px;
+        }
+
+        .failure {
+            color: #dc3545;
+            font-size: 18px;
+            font-weight: 600;
+            padding: 16px;
+            background: #f8d7da;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .solutions-list {
+            margin-top: 16px;
+        }
+
+        .solution-item {
+            background: white;
+            padding: 14px 18px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            font-family: "SF Mono", Monaco, "Courier New", monospace;
+            font-size: 15px;
+            color: #333;
+            border-left: 3px solid #667eea;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .solution-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .error-message {
+            color: #dc3545;
+            padding: 16px;
+            background: #f8d7da;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tips {
+            margin-top: 20px;
+            padding: 16px;
+            background: #fff3cd;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .tips strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        @media (max-width: 500px) {
+            .container {
+                padding: 24px;
+            }
+
+            .input-wrapper {
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 24点游戏求解器</h1>
+        <p class="subtitle">输入4个数字（1-13），用空格分隔</p>
+
+        <div class="input-section">
+            <label for="numberInput">请输入数字：</label>
+            <div class="input-wrapper">
+                <input type="text" id="numberInput" placeholder="例如: 5 6 7 8" autofocus>
+                <button onclick="verify()">验证</button>
+            </div>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="placeholder">
+                请输入4个数字，然后按回车或点击"验证"按钮
+            </div>
+        </div>
+
+        <div class="tips">
+            <strong>💡 使用说明</strong>
+            输入4个1-13之间的整数，用空格分隔。支持连续验证。
+        </div>
+    </div>
+
+    <script>
+        // 求解所有24点的解法
+        function solve24All(nums) {
+            function dfs(numbers) {
+                const results = [];
+
+                if (numbers.length === 1) {
+                    if (Math.abs(numbers[0][0] - 24) < 1e-6) {
+                        return [numbers[0][1]];
+                    }
+                    return [];
+                }
+
+                for (let i = 0; i < numbers.length; i++) {
+                    for (let j = 0; j < numbers.length; j++) {
+                        if (i === j) continue;
+
+                        const [aVal, aExpr] = numbers[i];
+                        const [bVal, bExpr] = numbers[j];
+                        const remaining = numbers.filter((_, k) => k !== i && k !== j);
+
+                        const operations = [
+                            [aVal + bVal, `(${aExpr} + ${bExpr})`],
+                            [aVal - bVal, `(${aExpr} - ${bExpr})`],
+                            [aVal * bVal, `(${aExpr} * ${bExpr})`],
+                        ];
+
+                        if (Math.abs(bVal) > 1e-6) {
+                            operations.push([aVal / bVal, `(${aExpr} / ${bExpr})`]);
+                        }
+
+                        for (const [resultVal, resultExpr] of operations) {
+                            const subResults = dfs(remaining.concat([[resultVal, resultExpr]]));
+                            results.push(...subResults);
+                        }
+                    }
+                }
+
+                return results;
+            }
+
+            const initial = nums.map(num => [parseFloat(num), String(num)]);
+            return dfs(initial);
+        }
+
+        // 去重函数
+        function deduplicateSolutions(solutions) {
+            const unique = [];
+            const canonicalHashes = new Set();
+            
+            for (const solution of solutions) {
+                // 计算表达式的规范哈希
+                const hash = getCanonicalHash(solution);
+                if (!canonicalHashes.has(hash)) {
+                    canonicalHashes.add(hash);
+                    unique.push(solution);
+                }
+            }
+            
+            return unique;
+        }
+        
+        // 获取表达式的规范哈希值
+        function getCanonicalHash(expr) {
+            try {
+                // 1. 解析表达式为树
+                const tree = parseExpression(expr.replace(/\s/g, ''));
+                // 2. 规范化树
+                const canonicalTree = canonicalizeTree(tree);
+                // 3. 生成哈希
+                return treeToHash(canonicalTree);
+            } catch (e) {
+                console.error("Hash error:", e);
+                return expr; // 降级处理
+            }
+        }
+
+        // 解析器
+        function parseExpression(expr) {
+            // 移除最外层多余括号
+            while (expr.startsWith('(') && expr.endsWith(')') && isBalanced(expr.slice(1, -1))) {
+                expr = expr.slice(1, -1);
+            }
+            
+            // 寻找主运算符（优先级最低的）
+            let balance = 0;
+            let splitIndex = -1;
+            let minPrecedence = Infinity;
+            
+            for (let i = expr.length - 1; i >= 0; i--) {
+                const char = expr[i];
+                if (char === ')') balance++;
+                else if (char === '(') balance--;
+                else if (balance === 0 && /[+\-*/]/.test(char)) {
+                    const precedence = (char === '*' || char === '/') ? 2 : 1;
+                    // 只有当优先级更低或相同时（从右向左扫描，保证左结合）更新
+                    // 注意：为了构建正确的树，我们需要找到最后执行的运算
+                    if (precedence < minPrecedence) {
+                        minPrecedence = precedence;
+                        splitIndex = i;
+                    }
+                }
+            }
+            
+            if (splitIndex !== -1) {
+                return {
+                    type: 'op',
+                    val: expr[splitIndex],
+                    left: parseExpression(expr.substring(0, splitIndex)),
+                    right: parseExpression(expr.substring(splitIndex + 1))
+                };
+            }
+            
+            // 是数字
+            return { type: 'num', val: expr };
+        }
+        
+        // 规范化树
+        function canonicalizeTree(node) {
+            if (node.type === 'num') return node;
+            
+            const left = canonicalizeTree(node.left);
+            const right = canonicalizeTree(node.right);
+            const op = node.val;
+            
+            // 处理交换律
+            if (op === '+' || op === '*') {
+                const leftHash = treeToHash(left);
+                const rightHash = treeToHash(right);
+                
+                if (leftHash > rightHash) {
+                    return { type: 'op', val: op, left: right, right: left };
+                }
+            }
+            
+            // 处理减法反转（可选，如 -(a-b) = b-a，这里暂不处理复杂代数变换）
+            
+            return { type: 'op', val: op, left, right };
+        }
+        
+        // 树转哈希
+        function treeToHash(node) {
+            if (node.type === 'num') return `N(${node.val})`;
+            return `Op(${node.val},${treeToHash(node.left)},${treeToHash(node.right)})`;
+        }
+        
+        // 检查括号平衡
+        function isBalanced(expr) {
+            let balance = 0;
+            for (let char of expr) {
+                if (char === '(') balance++;
+                if (char === ')') balance--;
+                if (balance < 0) return false;
+            }
+            return balance === 0;
+        }
+
+        // 验证输入
+        function verify() {
+            const input = document.getElementById('numberInput');
+            const resultSection = document.getElementById('resultSection');
+            const text = input.value.trim();
+
+            if (!text) {
+                resultSection.innerHTML = `
+                    <div class="placeholder">
+                        请输入4个数字，然后按回车或点击"验证"按钮
+                    </div>
+                `;
+                return;
+            }
+
+            const parts = text.split(/\s+/);
+
+            // 验证数量
+            if (parts.length !== 4) {
+                resultSection.innerHTML = `
+                    <div class="result-card">
+                        <div class="error-message">
+                            请输入4个数字，你输入了 ${parts.length} 个
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 验证是否为整数
+            let nums;
+            try {
+                nums = parts.map(p => parseInt(p, 10));
+            } catch (e) {
+                resultSection.innerHTML = `
+                    <div class="result-card">
+                        <div class="error-message">
+                            请输入有效的整数
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 验证范围
+            if (nums.some(n => isNaN(n) || n < 1 || n > 13)) {
+                resultSection.innerHTML = `
+                    <div class="result-card">
+                        <div class="error-message">
+                            数字必须在1-13之间
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 求解
+            const solutions = solve24All(nums);
+            const uniqueSolutions = deduplicateSolutions(solutions);
+            
+            // 排序显示
+            uniqueSolutions.sort();
+
+            // 显示结果
+            if (uniqueSolutions.length > 0) {
+                const countText = uniqueSolutions.length === 1
+                    ? '可以算出24点！'
+                    : `可以算出24点！共找到 ${uniqueSolutions.length} 种解法`;
+
+                let solutionsHtml = uniqueSolutions.map((sol, index) =>
+                    `<div class="solution-item">${index + 1}. ${sol} = 24</div>`
+                ).join('');
+
+                resultSection.innerHTML = `
+                    <div class="result-card">
+                        <div class="input-display">输入: ${nums.join(' ')}</div>
+                        <div class="success">${countText}</div>
+                        <div class="solutions-list">${solutionsHtml}</div>
+                    </div>
+                `;
+            } else {
+                resultSection.innerHTML = `
+                    <div class="result-card">
+                        <div class="input-display">输入: ${nums.join(' ')}</div>
+                        <div class="failure">❌ 无法算出24点！</div>
+                    </div>
+                `;
+            }
+        }
+
+        // 回车键触发表单提交
+        document.getElementById('numberInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                verify();
+            }
+        });
+
+        // 清空结果当用户开始输入时
+        document.getElementById('numberInput').addEventListener('input', function() {
+            const resultSection = document.getElementById('resultSection');
+            if (this.value.trim() === '') {
+                resultSection.innerHTML = `
+                    <div class="placeholder">
+                        请输入4个数字，然后按回车或点击"验证"按钮
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

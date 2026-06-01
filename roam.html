@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roam Capture</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-color: #1f2937;
+            --border-color: #e5e7eb;
+            --overlay-bg: rgba(255, 255, 255, 0.95);
+            --secondary-text: #6b7280;
+            --danger-color: #ef4444;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            position: relative; /* 为全局提示定位 */
+        }
+
+        /* ========== 全局提示样式 ========== */
+        .global-toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-width: 80%;
+            text-align: center;
+        }
+
+        .global-toast.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .global-toast.error {
+            background-color: var(--danger-color);
+        }
+
+        .global-toast.success {
+            background-color: var(--success-color);
+        }
+
+        .global-toast.warning {
+            background-color: var(--warning-color);
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+            overflow: hidden;
+            margin-top: 2vh;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            margin: 0;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .settings-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            color: #6b7280;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-btn:hover {
+            background-color: #f3f4f6;
+            color: var(--primary-color);
+            transform: rotate(30deg);
+        }
+
+        .settings-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* ========== 核心修改：API配置面板样式 ========== */
+        .settings-panel {
+            position: fixed; /* 改为基于视口的固定定位 */
+            top: 0;
+            left: 0;
+            width: 100vw; /* 视口宽度 */
+            height: 100vh; /* 视口高度 */
+            background-color: rgba(0, 0, 0, 0.5); /* 半透明背景，提升层次感 */
+            box-sizing: border-box;
+            display: flex;
+            align-items: center; /* 水平居中 */
+            justify-content: center; /* 垂直居中（相对于视口） */
+            z-index: 100; /* 提高层级，确保在最上层 */
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease-in-out;
+            overflow-y: auto; /* 视口高度不足时，面板可滚动 */
+            padding: 1rem; /* 边缘留白，避免贴边 */
+        }
+
+        .settings-panel.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* 配置面板内容容器：限制最大高度和宽度 */
+        .settings-content {
+            width: 100%;
+            max-width: 500px; /* 和主容器宽度一致 */
+            max-height: 90vh; /* 最大高度为视口的90%，确保不超出屏幕 */
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+            padding: 2rem;
+            box-sizing: border-box;
+            overflow-y: auto; /* 内容超出容器时内部滚动 */
+        }
+
+        .settings-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        label {
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 0; 
+        }
+
+        .btn-text-action {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .btn-text-action:hover {
+            background-color: #eff6ff;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="date"],
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        
+        .btn-primary:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: #374151;
+            margin-top: 0.5rem;
+        }
+
+        .status {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-align: center;
+            display: none;
+        }
+
+        .status.success { background-color: #d1fae5; color: #065f46; }
+        .status.error { background-color: #fee2e2; color: #991b1b; }
+        .status.mixed { background-color: #fffbeb; color: #92400e; }
+
+        /* --- 历史记录区域样式 --- */
+        .history-section {
+            margin-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+        }
+
+        .history-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-clear-all {
+            font-size: 0.75rem;
+            color: var(--danger-color);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .btn-clear-all:hover {
+            background-color: #fee2e2;
+        }
+
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        details {
+            margin-bottom: 0.75rem;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid transparent;
+        }
+
+        details[open] {
+            border-color: var(--border-color);
+            background-color: #fff;
+        }
+
+        summary {
+            padding: 0.75rem;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-color);
+            background-color: #f9fafb;
+            display: flex;
+            justify-content: space-between; /* 让内容和删除按钮分开 */
+            align-items: center;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        summary:hover {
+            background-color: #f3f4f6;
+        }
+
+        /* 自定义 summary 样式 */
+        summary .summary-text {
+            display: flex;
+            align-items: center;
+        }
+
+        /* 组删除按钮 */
+        .btn-delete-group {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            transition: color 0.2s;
+        }
+        
+        .btn-delete-group:hover {
+            color: var(--danger-color);
+            background-color: #fee2e2;
+        }
+
+        .history-items {
+            padding: 0 1rem 1rem 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .history-item {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #4b5563;
+            display: flex; /* 使用 Flexbox 布局 */
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-info {
+            flex: 1;
+            min-width: 0; /* 防止内容撑开 */
+        }
+
+        .item-time {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-bottom: 0.25rem;
+        }
+
+        .item-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* 单条删除按钮 */
+        .btn-delete-item {
+            background: none;
+            border: none;
+            color: #d1d5db;
+            cursor: pointer;
+            padding: 4px;
+            margin-top: 2px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover .btn-delete-item {
+            color: #9ca3af; /* hover item 时显示按钮 */
+        }
+
+        .btn-delete-item:hover {
+            color: var(--danger-color) !important;
+            background-color: #fee2e2;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: var(--secondary-text);
+            font-size: 0.85rem;
+            padding: 1rem;
+        }
+		
+		p {
+			display: none;
+		}
+        
+        /* 配置面板分隔线 */
+        .config-divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 1.5rem 0;
+        }
+
+        /* 平台选择区域样式 */
+        .platform-select {
+            background: #f9f9f9;
+            padding: 0.5rem 1rem; /* 压缩上下内边距，减少高度 */
+            border-radius: 8px;
+            margin: 0.5rem 0; /* 压缩上下外边距 */
+            display: flex; /* 水平排列子元素 */
+            justify-content: space-around; /* 均匀分布选项 */
+            align-items: center; /* 垂直居中 */
+        }
+        .checkbox-item {
+            margin: 0; /* 移除默认外边距 */
+            display: flex;
+            align-items: center;
+            gap: 6px; /* 缩小复选框和文字的间距 */
+        }
+        .checkbox-item input {
+            width: 16px; /* 缩小复选框尺寸 */
+            height: 16px;
+            cursor: pointer;
+            flex: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 全局提示容器 -->
+    <div class="global-toast" id="globalToast"></div>
+
+    <div class="container">
+        <div class="header-row">
+            <h2>Roam Capture</h2>
+            <button id="toggleSettingsBtn" class="settings-btn" title="设置 API Key">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- ========== 核心修改：配置面板增加内容容器 ========== -->
+        <div id="settingsPanel" class="settings-panel">
+            <div class="settings-content">
+                <div class="settings-title">API 配置</div>
+                
+                <!-- Roam Research 配置 -->
+                <div class="form-group">
+                    <label for="graphName">Roam Graph Name</label>
+                    <input type="text" id="graphName" placeholder="例如: my-knowledge-base">
+                </div>
+                <div class="form-group">
+                    <label for="apiKey">Roam API Key (Token)</label>
+                    <input type="password" id="apiKey" placeholder="roam-graph-token-...">
+                </div>
+                
+                <!-- 分隔线 -->
+                <div class="config-divider"></div>
+                
+                <!-- Get笔记 配置 -->
+                <div class="form-group" style="display:none">
+                    <label for="getNotesApiUrl">Get笔记 API 地址</label>
+                    <input type="text" id="getNotesApiUrl" value="https://get-notes.luojilab.com/voicenotes/web/notes">
+                </div>
+                <div class="form-group">
+                    <label for="getNotesApiKey">Get笔记 API Token</label>
+                    <input type="password" id="getNotesApiKey">
+                </div>
+
+                <!-- Flomo API 配置项 -->
+                <div class="config-divider"></div>
+                <div class="form-group">
+                    <label for="flomoApiUrl">Flomo API 地址</label>
+                    <input type="text" id="flomoApiUrl">
+                </div>
+
+                <button id="saveConfigBtn" class="btn btn-primary">保存并返回</button>
+                <button id="cancelConfigBtn" class="btn btn-secondary">取消</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="label-row">
+                <label for="datePicker">日期</label>
+            </div>
+            <input type="date" id="datePicker">
+        </div>
+
+        <div class="form-group">
+            <div class="label-row">
+                <label for="content">内容</label>
+                <button id="insertTimeBtn" class="btn-text-action" title="插入当前时间到最前面">🕒 插入时间</button>
+            </div>
+            <textarea id="content" placeholder="输入想要记录的内容..."></textarea>
+        </div>
+
+        <!-- 平台选择区域 -->
+        <div class="platform-select">
+            <div class="checkbox-item">
+                <input type="checkbox" id="roam-check" name="platform">
+                <label for="roam-check">Roam</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="get-check" name="platform">
+                <label for="get-check">Get笔记</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="flomo-check" name="platform">
+                <label for="flomo-check">Flomo</label>
+            </div>
+        </div>
+
+        <button id="submitBtn" class="btn btn-primary" disabled>发送</button>
+
+        <div id="statusMsg" class="status"></div>
+
+        <div class="history-section">
+            <div class="history-title">
+                <span>已发送记录 (本地)</span>
+                <button id="clearAllBtn" class="btn-clear-all" title="删除所有本地记录">清空全部</button>
+            </div>
+            <div id="historyContainer" class="history-list">
+                <div class="empty-history">暂无发送记录</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // UI 引用
+            const settingsPanel = document.getElementById('settingsPanel');
+            const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
+            const saveConfigBtn = document.getElementById('saveConfigBtn');
+            const cancelConfigBtn = document.getElementById('cancelConfigBtn');
+            const graphNameInput = document.getElementById('graphName');
+            const apiKeyInput = document.getElementById('apiKey');
+            const getNotesApiUrlInput = document.getElementById('getNotesApiUrl');
+            const getNotesApiKeyInput = document.getElementById('getNotesApiKey');
+            const flomoApiUrlInput = document.getElementById('flomoApiUrl');
+            
+            const datePicker = document.getElementById('datePicker');
+            const contentInput = document.getElementById('content');
+            const submitBtn = document.getElementById('submitBtn');
+            const statusMsg = document.getElementById('statusMsg');
+            const historyContainer = document.getElementById('historyContainer');
+            const insertTimeBtn = document.getElementById('insertTimeBtn');
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            const globalToast = document.getElementById('globalToast'); // 全局提示引用
+
+            // 复选框引用
+            const roamCheck = document.getElementById('roam-check');
+            const getCheck = document.getElementById('get-check');
+            const flomoCheck = document.getElementById('flomo-check');
+
+            // 初始化
+            const today = new Date().toLocaleDateString('en-CA'); // 直接得到本地时区的 "YYYY-MM-DD"
+            datePicker.value = today;
+
+            // 加载配置和历史
+            loadConfig();
+            renderHistory();
+            
+            // 初始化复选框状态
+            initCheckboxes();
+            
+            // 绑定事件
+            bindEvents();
+            
+            // 启动校验：至少一个平台API配置完成，否则强制打开配置面板
+            if (!checkAtLeastOneApiConfigured()) {
+                openSettings();
+                showToast('请至少配置一个平台的API信息才能使用！', 'error');
+            } else {
+                submitBtn.disabled = false; // 启用发送按钮
+            }
+
+            // 全局提示函数
+            /**
+             * 显示全局提示
+             * @param {string} message 提示内容
+             * @param {string} type 类型：success/error/warning
+             * @param {number} duration 显示时长（默认3000毫秒）
+             */
+            function showToast(message, type = 'warning', duration = 3000) {
+                // 清除之前的定时器
+                if (globalToast.timer) {
+                    clearTimeout(globalToast.timer);
+                }
+                
+                // 设置提示内容和样式
+                globalToast.textContent = message;
+                globalToast.className = `global-toast ${type}`;
+                
+                // 显示提示
+                setTimeout(() => {
+                    globalToast.classList.add('active');
+                }, 10);
+                
+                // 自动隐藏
+                globalToast.timer = setTimeout(() => {
+                    globalToast.classList.remove('active');
+                }, duration);
+            }
+
+            // --- 事件绑定函数 ---
+            function bindEvents() {
+                // 插入时间
+                insertTimeBtn.addEventListener('click', () => {
+                    const now = new Date();
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    const timeStr = `${hours}:${minutes} `; 
+                    contentInput.value = timeStr + contentInput.value;
+                    const cursorPosition = timeStr.length;
+                    contentInput.focus();
+                    contentInput.setSelectionRange(cursorPosition, cursorPosition);
+                });
+
+                // 设置面板开关
+                toggleSettingsBtn.addEventListener('click', () => {
+                    if (settingsPanel.classList.contains('active')) {
+                        // 关闭前校验：至少一个平台配置完成
+                        if (checkAtLeastOneApiConfigured()) {
+                            closeSettings();
+                        } else {
+                            showToast('请至少配置一个平台的API信息才能关闭配置面板！', 'error');
+                        }
+                    } else {
+                        openSettings();
+                    }
+                });
+                
+                // 保存配置
+                saveConfigBtn.addEventListener('click', () => {
+                    const gName = graphNameInput.value.trim();
+                    const key = apiKeyInput.value.trim();
+                    const getNotesUrl = getNotesApiUrlInput.value.trim();
+                    const getNotesKey = getNotesApiKeyInput.value.trim();
+                    const flomoUrl = flomoApiUrlInput.value.trim();
+                    
+                    // 保存所有配置（无需强制Roam必填，只要至少一个平台配置即可）
+                    localStorage.setItem('roam_graph_name', gName);
+                    localStorage.setItem('roam_api_token', key);
+                    localStorage.setItem('get_notes_api_url', getNotesUrl);
+                    localStorage.setItem('get_notes_api_token', getNotesKey);
+                    localStorage.setItem('flomo_api_url', flomoUrl);
+                    
+                    // 校验是否至少一个平台配置完成
+                    if (checkAtLeastOneApiConfigured()) {
+                        showStatus('配置已保存', 'success');
+                        closeSettings();
+                        submitBtn.disabled = false; // 启用发送按钮
+                        // 刷新复选框状态
+                        initCheckboxes();
+                    } else {
+                        showToast('请至少配置一个平台的API信息！', 'error');
+                    }
+                });
+
+                // 取消配置（只有至少一个平台配置完成才能取消）
+                cancelConfigBtn.addEventListener('click', () => {
+                    if (checkAtLeastOneApiConfigured()) {
+                        loadConfig();
+                        closeSettings();
+                    } else {
+                        showToast('请至少配置一个平台的API信息才能取消！', 'error');
+                    }
+                });
+                
+                // 发送逻辑
+                submitBtn.addEventListener('click', sendToSelectedPlatforms);
+
+                // 清空全部历史
+                clearAllBtn.addEventListener('click', () => {
+                    if (confirm("确定要清空所有本地历史记录吗？此操作不可恢复。")) {
+                        localStorage.removeItem('roam_history');
+                        renderHistory();
+                    }
+                });
+
+                // 委托监听历史记录的删除操作
+                historyContainer.addEventListener('click', (e) => {
+                    // 删除整个日期组
+                    if (e.target.closest('.btn-delete-group')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const btn = e.target.closest('.btn-delete-group');
+                        const dateToDelete = btn.dataset.date;
+                        
+                        if (confirm(`确定要删除 ${dateToDelete} 的所有记录吗？`)) {
+                            deleteHistoryGroup(dateToDelete);
+                        }
+                        return;
+                    }
+
+                    // 删除单条记录
+                    if (e.target.closest('.btn-delete-item')) {
+                        const btn = e.target.closest('.btn-delete-item');
+                        const idToDelete = parseInt(btn.dataset.id);
+                        deleteHistoryItem(idToDelete);
+                    }
+                });
+
+                // 绑定复选框事件
+                bindCheckboxEvents();
+            }
+
+            // --- 核心功能函数 ---
+
+            // 打开设置面板
+            function openSettings() { 
+                settingsPanel.classList.add('active'); 
+                // 修复：打开面板时滚动到顶部，确保内容可见
+                document.querySelector('.settings-content').scrollTop = 0;
+            }
+
+            // 关闭设置面板
+            function closeSettings() { 
+                settingsPanel.classList.remove('active'); 
+            }
+            
+            // 加载配置
+            function loadConfig() {
+                // 加载 Roam 配置
+                const savedGraph = localStorage.getItem('roam_graph_name');
+                const savedToken = localStorage.getItem('roam_api_token');
+                if (savedGraph) graphNameInput.value = savedGraph;
+                if (savedToken) apiKeyInput.value = savedToken;
+                
+                // 加载 Get笔记 配置
+                const savedGetNotesUrl = localStorage.getItem('get_notes_api_url');
+                const savedGetNotesKey = localStorage.getItem('get_notes_api_token');
+                if (savedGetNotesUrl) getNotesApiUrlInput.value = savedGetNotesUrl;
+                if (savedGetNotesKey) getNotesApiKeyInput.value = savedGetNotesKey;
+
+                // 加载 Flomo API 配置
+                const savedFlomoUrl = localStorage.getItem('flomo_api_url');
+                if (savedFlomoUrl) flomoApiUrlInput.value = savedFlomoUrl;
+            }
+
+            // 显示状态提示
+            function showStatus(msg, type) {
+                statusMsg.textContent = msg;
+                statusMsg.className = `status ${type}`;
+                statusMsg.style.display = 'block';
+                setTimeout(() => { 
+                    if (type === 'success') statusMsg.style.display = 'none'; 
+                }, 5000);
+            }
+
+            // --- 历史记录管理逻辑 ---
+            function getHistory() {
+                return JSON.parse(localStorage.getItem('roam_history') || '[]');
+            }
+
+            function saveHistoryData(history) {
+                localStorage.setItem('roam_history', JSON.stringify(history));
+                renderHistory();
+            }
+
+            function saveToHistory(content, targetDate) {
+                let history = getHistory();
+                const newItem = {
+                    id: Date.now(),
+                    content: content,
+                    targetDate: targetDate, 
+                    timestamp: new Date().getTime()
+                };
+                history.push(newItem);
+                saveHistoryData(history);
+            }
+
+            function deleteHistoryItem(id) {
+                let history = getHistory();
+                const newHistory = history.filter(item => item.id !== id);
+                saveHistoryData(newHistory);
+            }
+
+            function deleteHistoryGroup(date) {
+                let history = getHistory();
+                const newHistory = history.filter(item => item.targetDate !== date);
+                saveHistoryData(newHistory);
+            }
+
+            function renderHistory() {
+                const history = getHistory();
+                
+                if (history.length === 0) {
+                    historyContainer.innerHTML = '<div class="empty-history">暂无发送记录</div>';
+                    clearAllBtn.style.display = 'none';
+                    return;
+                }
+                clearAllBtn.style.display = 'block';
+
+                // 过滤最近30天
+                const thirtyDaysAgo = new Date().getTime() - (30 * 24 * 60 * 60 * 1000);
+                const recentHistory = history.filter(item => item.timestamp > thirtyDaysAgo);
+
+                if (recentHistory.length === 0) {
+                    historyContainer.innerHTML = '<div class="empty-history">没有最近30天的记录</div>';
+                    return;
+                }
+
+                // 分组
+                const grouped = recentHistory.reduce((acc, item) => {
+                    const date = item.targetDate;
+                    if (!acc[date]) acc[date] = [];
+                    acc[date].push(item);
+                    return acc;
+                }, {});
+
+                const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+
+                let html = '';
+                sortedDates.forEach((date, index) => {
+                    const items = grouped[date].sort((a, b) => b.timestamp - a.timestamp);
+                    const isOpen = index === 0 ? 'open' : '';
+                    
+                    html += `
+                    <details ${isOpen}>
+                        <summary>
+                            <span class="summary-text">${date} (${items.length})</span>
+                            <button class="btn-delete-group" data-date="${date}" title="删除该日记录">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </summary>
+                        <div class="history-items">
+                            ${items.map(item => `
+                                <div class="history-item">
+                                    <div class="item-info">
+                                        <div class="item-time">${new Date(item.timestamp).toLocaleTimeString()}</div>
+                                        <div class="item-content">${escapeHtml(item.content)}</div>
+                                    </div>
+                                    <button class="btn-delete-item" data-id="${item.id}" title="删除此条">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </details>`;
+                });
+
+                historyContainer.innerHTML = html;
+            }
+
+            function escapeHtml(text) {
+                const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+                return text.replace(/[&<>"']/g, m => map[m]);
+            }
+
+            // --- 平台发送逻辑 ---
+
+            // Roam日期格式处理
+            function getRoamDateTitle(rawDate) {
+                const [year, month, day] = rawDate.split('-').map(Number);
+                const months = [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+                let suffix = 'th';
+                if (day === 1 || day === 21 || day === 31) suffix = 'st';
+                else if (day === 2 || day === 22) suffix = 'nd';
+                else if (day === 3 || day === 23) suffix = 'rd';
+                return `${months[month - 1]} ${day}${suffix}, ${year}`;
+            }
+
+            // Get笔记发送函数
+            async function sendToGetNotes(content) {
+                const getNotesApiUrl = localStorage.getItem('get_notes_api_url');
+                const getNotesApiKey = localStorage.getItem('get_notes_api_token');
+                
+                // 如果未配置 Get笔记 API，直接返回失败
+                if (!getNotesApiUrl || !getNotesApiKey) {
+                    return { success: false, message: "Get笔记 未配置API，发送失败" };
+                }
+
+                try {
+                    // 构建请求体
+                    const jsonContentObj = {
+                        "type":"doc",
+                        "content":[{
+                            "type":"paragraph",
+                            "attrs":{
+                                "lineHeight":"100%",
+                                "textAlign":null,
+                                "class":null,
+                                "indent":0
+                            },
+                            "content":[{
+                                "type":"text",
+                                "text": content
+                            }]
+                        }]
+                    };
+
+                    const getNotesPayload = {
+                        "title": "",
+                        "content": content,
+                        "json_content": JSON.stringify(jsonContentObj),
+                        "entry_type": "manual",
+                        "note_type": "plain_text",
+                        "source": "web",
+                        "tags": []
+                    };
+
+                    const response = await fetch(getNotesApiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'authorization': `Bearer ${getNotesApiKey}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(getNotesPayload)
+                    });
+
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(`Get笔记 API 错误 [${response.status}]: ${errText}`);
+                    }
+
+                    const responseData = await response.json();
+                    return { success: true, message: "Get笔记 发送成功", data: responseData };
+                } catch (error) {
+                    console.error("Get笔记 发送失败:", error);
+                    return { 
+                        success: false, 
+                        message: `Get笔记 发送失败: ${error.message || '网络错误或API配置错误'}` 
+                    };
+                }
+            }
+
+            // Flomo 发送函数
+            async function sendToFlomo(content) {
+                const flomoApiUrl = localStorage.getItem('flomo_api_url');
+                
+                // 未配置 Flomo API，返回失败
+                if (!flomoApiUrl) {
+                    return { success: false, message: "Flomo 未配置API，发送失败" };
+                }
+
+                try {
+                    const response = await fetch(flomoApiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ content })
+                    });
+
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(`Flomo API 错误 [${response.status}]: ${errText}`);
+                    }
+
+                    return { success: true, message: "Flomo 发送成功" };
+                } catch (error) {
+                    console.error("Flomo 发送失败:", error);
+                    return { 
+                        success: false, 
+                        message: `Flomo 发送失败: ${error.message || '网络错误或API配置错误'}` 
+                    };
+                }
+            }
+
+            // Roam 发送函数
+            async function sendToRoam(content, rawDate) {
+                const graphName = localStorage.getItem('roam_graph_name');
+                const token = localStorage.getItem('roam_api_token');
+
+                // 未配置 Roam API，返回失败
+                if (!graphName || !token) {
+                    return { success: false, message: "Roam 未配置API，发送失败" };
+                }
+
+                const [year, month, day] = rawDate.split('-');
+                const roamDateUid = `${month}-${day}-${year}`;
+                const roamPageTitle = getRoamDateTitle(rawDate);
+
+                // 通用 POST 函数
+                const postRequest = async (payload) => {
+                    const writeUrl = `https://peer-57.api.roamresearch.com:3000/api/graph/${graphName}/write`;
+                    const response = await fetch(writeUrl, {
+                        method: 'POST',
+                        headers: { 
+                            'Authorization': `Bearer ${token}`, 
+                            'Content-Type': 'application/json', 
+                            'Accept': 'application/json' 
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        const err = new Error(`Request Failed`);
+                        err.status = response.status;
+                        err.text = await response.text();
+                        throw err;
+                    }
+                    return response;
+                };
+
+                try {
+                    // 尝试直接创建 Block
+                    await postRequest({
+                        "action": "create-block",
+                        "location": { "parent-uid": roamDateUid, "order": "last" },
+                        "block": { "string": content }
+                    });
+
+                    return { success: true, message: "Roam 发送成功" };
+
+                } catch (error) {
+                    console.warn("Roam 初次发送失败", error);
+
+                    // 捕获 400 (Page missing) 或其他错误，尝试补救
+                    if (error.status === 400 || (error.text && error.text.includes("parent-uid")) || error.status === 500) {
+                        try {
+                            // 创建页面
+                            await postRequest({
+                                "action": "create-page",
+                                "page": { "title": roamPageTitle, "uid": roamDateUid }
+                            });
+
+                            // 重试创建 Block
+                            await postRequest({
+                                "action": "create-block",
+                                "location": { "parent-uid": roamDateUid, "order": "last" },
+                                "block": { "string": content }
+                            });
+
+                            return { success: true, message: "Roam 页面创建并发送成功" };
+
+                        } catch (retryError) {
+                            return { 
+                                success: false, 
+                                message: `Roam 重试失败: ${retryError.status || ''} - ${retryError.text || retryError.message}` 
+                            };
+                        }
+
+                    } else {
+                        // 其他网络错误或 Key 错误
+                        let msg = error.message;
+                        if (msg.includes('Failed to fetch')) {
+                            msg = 'Roam 网络错误: 可能被浏览器 CORS 拦截，请检查控制台或使用插件。';
+                        } else if (error.text) {
+                            msg += `: ${error.text}`;
+                        }
+                        return { success: false, message: msg };
+                    }
+                }
+            }
+
+            // --- 复选框相关函数 ---
+            /**
+             * 初始化复选框状态：优先读本地存储，无则选中已配置API的平台
+             */
+            function initCheckboxes() {
+                // Roam 复选框
+                initSingleCheckbox('roam', roamCheck, isRoamConfigured());
+                // Get笔记 复选框
+                initSingleCheckbox('get', getCheck, isGetNotesConfigured());
+                // Flomo 复选框
+                initSingleCheckbox('flomo', flomoCheck, isFlomoConfigured());
+            }
+
+            /**
+             * 初始化单个复选框
+             * @param {string} key 本地存储的key前缀
+             * @param {HTMLElement} el 复选框元素
+             * @param {boolean} hasApi 是否配置了API
+             */
+            function initSingleCheckbox(key, el, hasApi) {
+                const savedStatus = localStorage.getItem(`${key}_check_status`);
+                if (savedStatus !== null) {
+                    el.checked = savedStatus === 'true';
+                } else {
+                    el.checked = hasApi; // 首次打开，选中已配置API的平台
+                }
+            }
+
+            /**
+             * 绑定复选框变更事件：保存状态 + 校验API
+             */
+            function bindCheckboxEvents() {
+                // Roam 复选框
+                roamCheck.addEventListener('change', () => {
+                    saveCheckboxStatus('roam', roamCheck.checked);
+                    checkApiBeforeCheck('roam', roamCheck.checked, isRoamConfigured(), graphNameInput);
+                });
+
+                // Get笔记 复选框
+                getCheck.addEventListener('change', () => {
+                    saveCheckboxStatus('get', getCheck.checked);
+                    checkApiBeforeCheck('get', getCheck.checked, isGetNotesConfigured(), getNotesApiUrlInput);
+                });
+
+                // Flomo 复选框
+                flomoCheck.addEventListener('change', () => {
+                    saveCheckboxStatus('flomo', flomoCheck.checked);
+                    checkApiBeforeCheck('flomo', flomoCheck.checked, isFlomoConfigured(), flomoApiUrlInput);
+                });
+            }
+
+            /**
+             * 保存复选框状态到本地存储
+             * @param {string} key 前缀
+             * @param {boolean} checked 选中状态
+             */
+            function saveCheckboxStatus(key, checked) {
+                localStorage.setItem(`${key}_check_status`, checked);
+            }
+
+            /**
+             * 选中前校验API，未配置则打开设置面板并聚焦对应输入框
+             * @param {string} platform 平台名称（roam/get/flomo）
+             * @param {boolean} checked 是否选中
+             * @param {Function} hasApiCheck 校验API的函数
+             * @param {HTMLElement} inputEl 要聚焦的输入框
+             */
+            function checkApiBeforeCheck(platform, checked, hasApiCheck, inputEl) {
+                if (checked && !hasApiCheck) {
+                    // 选中但无API，打开设置面板并聚焦对应输入框
+                    openSettings();
+                    inputEl.focus();
+                    showToast(`请先配置${platform === 'roam' ? 'Roam' : platform === 'get' ? 'Get笔记' : 'Flomo'}的API信息！`, 'warning');
+                    // 取消选中该复选框
+                    const checkbox = platform === 'roam' ? roamCheck : (platform === 'get' ? getCheck : flomoCheck);
+                    checkbox.checked = false;
+                    saveCheckboxStatus(platform, false);
+                }
+            }
+
+            // --- API配置校验函数 ---
+            /**
+             * 检查是否至少一个平台API配置完成
+             */
+            function checkAtLeastOneApiConfigured() {
+                return isRoamConfigured() || isGetNotesConfigured() || isFlomoConfigured();
+            }
+
+            /**
+             * 检查Roam API是否配置
+             */
+            function isRoamConfigured() {
+                return !!localStorage.getItem('roam_graph_name') && !!localStorage.getItem('roam_api_token');
+            }
+
+            /**
+             * 检查Get笔记 API是否配置
+             */
+            function isGetNotesConfigured() {
+                return !!localStorage.getItem('get_notes_api_url') && !!localStorage.getItem('get_notes_api_token');
+            }
+
+            /**
+             * 检查Flomo API是否配置
+             */
+            function isFlomoConfigured() {
+                return !!localStorage.getItem('flomo_api_url');
+            }
+
+            // --- 核心发送逻辑 ---
+            async function sendToSelectedPlatforms() {
+                const rawDate = datePicker.value;
+                const content = contentInput.value.trim();
+
+                // 基础校验：内容不能为空
+                if (!content) { 
+                    showStatus('请输入内容', 'error'); 
+                    return; 
+                }
+
+                // 收集选中的平台
+                const selectedPlatforms = [];
+                if (roamCheck.checked) selectedPlatforms.push('roam');
+                if (getCheck.checked) selectedPlatforms.push('get');
+                if (flomoCheck.checked) selectedPlatforms.push('flomo');
+
+                // 校验：至少选中一个平台
+                if (selectedPlatforms.length === 0) {
+                    showStatus('请至少选择一个要同步的平台！', 'error');
+                    return;
+                }
+
+                // 按钮状态处理
+                submitBtn.disabled = true;
+                submitBtn.textContent = '发送中...';
+                statusMsg.style.display = 'none';
+
+                try {
+                    // 逐个发送到选中的平台
+                    const results = [];
+                    for (const platform of selectedPlatforms) {
+                        let result;
+                        if (platform === 'roam') {
+                            result = await sendToRoam(content, rawDate);
+                        } else if (platform === 'get') {
+                            result = await sendToGetNotes(content);
+                        } else if (platform === 'flomo') {
+                            result = await sendToFlomo(content);
+                        }
+                        results.push(result);
+                    }
+
+                    // 汇总结果
+                    const successResults = results.filter(r => r.success);
+                    const failResults = results.filter(r => !r.success);
+
+                    let statusType = 'success';
+                    let statusMsgText = '';
+                    if (successResults.length > 0 && failResults.length === 0) {
+                        statusMsgText = `发送成功：${successResults.map(r => r.message).join('、')}`;
+                    } else if (successResults.length > 0 && failResults.length > 0) {
+                        statusType = 'mixed';
+                        statusMsgText = `部分成功：${successResults.map(r => r.message).join('、')} | 失败：${failResults.map(r => r.message).join('、')}`;
+                    } else {
+                        statusType = 'error';
+                        statusMsgText = `全部失败：${failResults.map(r => r.message).join('、')}`;
+                    }
+
+                    // 显示状态
+                    showStatus(statusMsgText, statusType);
+
+                    // 只有全部成功才保存历史
+                    if (failResults.length === 0) {
+                        saveToHistory(content, rawDate);
+                        contentInput.value = '';
+                    }
+
+                } catch (generalError) {
+                    showStatus(`发送异常: ${generalError.message}`, 'error');
+                    console.error("发送过程异常:", generalError);
+                } finally {
+                    // 恢复按钮状态
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '发送';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

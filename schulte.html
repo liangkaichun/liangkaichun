@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>舒尔特方格</title>
+	<style>
+		:root {
+			--bg: #f0f5ff;
+			--bg-deep: #e0e7ff;
+			--surface: rgba(255, 255, 255, 0.92);
+			--surface-solid: #ffffff;
+			--text: #0f172a;
+			--muted: #64748b;
+			--border: rgba(148, 163, 184, 0.22);
+			--primary: #4f46e5;
+			--primary-dark: #4338ca;
+			--primary-soft: #eef2ff;
+			--success: #10b981;
+			--warning: #f59e0b;
+			--danger: #ef4444;
+			--gold: #f59e0b;
+			--silver: #94a3b8;
+			--bronze: #d97706;
+			--shadow: 0 24px 80px rgba(79, 70, 229, 0.16);
+			--cell-size: 76px;
+			--radius: 22px;
+		}
+
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+			-webkit-tap-highlight-color: transparent;
+		}
+
+		html, body {
+			min-height: 100%;
+		}
+
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+			background:
+				radial-gradient(ellipse 80% 60% at 20% 0%, rgba(129, 140, 248, 0.20), transparent 50%),
+				radial-gradient(ellipse 60% 70% at 90% 100%, rgba(56, 189, 248, 0.16), transparent 50%),
+				radial-gradient(ellipse 50% 50% at 50% 50%, rgba(236, 72, 153, 0.06), transparent 70%),
+				linear-gradient(135deg, var(--bg), var(--bg-deep));
+			color: var(--text);
+			padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+			user-select: none;
+			-webkit-user-select: none;
+			-webkit-text-size-adjust: 100%;
+			overscroll-behavior: none;
+			animation: bgShift 18s ease-in-out infinite alternate;
+		}
+
+		@keyframes bgShift {
+			0% { background-position: 0% 0%, 100% 100%, 50% 50%; }
+			100% { background-position: 10% 5%, 90% 95%, 50% 50%; }
+		}
+
+		.app {
+			width: min(1180px, 100%);
+			margin: 0 auto;
+			display: grid;
+			grid-template-columns: minmax(320px, 1fr) 340px;
+			gap: 20px;
+			align-items: start;
+		}
+
+		.main-panel,
+		.side-panel {
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			box-shadow: var(--shadow);
+			backdrop-filter: blur(18px);
+		}
+
+		.main-panel {
+			padding: 22px;
+			min-height: calc(100vh - 44px);
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+
+		.side-panel {
+			position: sticky;
+			top: 22px;
+			padding: 18px;
+			display: flex;
+			flex-direction: column;
+			gap: 14px;
+		}
+
+		.header {
+			display: flex;
+			justify-content: space-between;
+			gap: 16px;
+			align-items: center;
+		}
+
+		.title h1 {
+			font-size: clamp(26px, 4vw, 42px);
+			line-height: 1.05;
+			letter-spacing: -0.04em;
+			background: linear-gradient(135deg, #4f46e5, #7c3aed, #06b6d4);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			background-clip: text;
+		}
+
+		.title p {
+			margin-top: 8px;
+			color: var(--muted);
+			font-size: 14px;
+		}
+
+		.target-tip {
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+			padding: 10px 10px 10px 14px;
+			border-radius: 999px;
+			background: #111827;
+			color: #fff;
+			box-shadow: 0 14px 32px rgba(17, 24, 39, 0.18);
+			white-space: nowrap;
+		}
+
+		.target-tip.hidden {
+			display: none;
+		}
+
+		.badge {
+			font-weight: 800;
+		}
+
+		.tip-close {
+			width: 24px;
+			height: 24px;
+			border: 0;
+			border-radius: 50%;
+			background: rgba(255, 255, 255, 0.16);
+			color: #fff;
+			font-size: 18px;
+			font-weight: 800;
+			line-height: 1;
+			cursor: pointer;
+			touch-action: manipulation;
+		}
+
+		.tip-close:hover {
+			background: rgba(255, 255, 255, 0.26);
+		}
+
+		.controls {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+			gap: 10px;
+		}
+
+		.control-card {
+			background: rgba(255, 255, 255, 0.72);
+			border: 1px solid var(--border);
+			border-radius: 16px;
+			padding: 12px;
+		}
+
+		.control-card label {
+			display: block;
+			font-size: 12px;
+			font-weight: 800;
+			color: var(--muted);
+			margin-bottom: 8px;
+			letter-spacing: 0.04em;
+		}
+
+		select,
+		input,
+		button {
+			font: inherit;
+		}
+
+		select,
+		input {
+			width: 100%;
+			border: 1px solid var(--border);
+			border-radius: 12px;
+			padding: 10px 11px;
+			background: #fff;
+			color: var(--text);
+			font-weight: 700;
+			font-size: 16px;
+			outline: none;
+			appearance: none;
+			-webkit-appearance: none;
+		}
+
+		.mode-group,
+		.button-group {
+			display: flex;
+			gap: 8px;
+		}
+
+		.btn {
+			border: 0;
+			border-radius: 13px;
+			padding: 11px 14px;
+			background: #fff;
+			color: var(--text);
+			font-weight: 800;
+			cursor: pointer;
+			touch-action: manipulation;
+			box-shadow: inset 0 0 0 1px var(--border), 0 8px 20px rgba(15, 23, 42, 0.06);
+			transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease;
+		}
+
+		.btn:hover {
+			transform: translateY(-1px);
+			box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.5), 0 12px 24px rgba(79, 70, 229, 0.14);
+		}
+
+		.btn.active,
+		.btn.primary {
+			background: linear-gradient(135deg, var(--primary), #7c3aed);
+			color: #fff;
+			box-shadow: 0 14px 30px rgba(79, 70, 229, 0.32);
+		}
+
+		.btn.ghost {
+			background: var(--primary-soft);
+			color: var(--primary-dark);
+		}
+
+		.mode-group .btn {
+			flex: 1;
+			padding-inline: 8px;
+		}
+
+		.stats {
+			display: grid;
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+			gap: 10px;
+		}
+
+		.stat {
+			padding: 14px;
+			border-radius: 18px;
+			background: rgba(255, 255, 255, 0.7);
+			border: 1px solid var(--border);
+		}
+
+		.stat span {
+			display: block;
+			font-size: 12px;
+			color: var(--muted);
+			font-weight: 800;
+			margin-bottom: 6px;
+		}
+
+		.stat b {
+			font-size: clamp(22px, 3vw, 34px);
+			line-height: 1;
+			letter-spacing: -0.04em;
+		}
+
+		.board-wrap {
+			flex: 1;
+			min-height: 430px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 18px;
+			border-radius: 24px;
+			background:
+				linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.3)),
+				linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, transparent 50%, rgba(6, 182, 212, 0.06) 100%);
+			border: 1px solid var(--border);
+			overflow: hidden;
+			position: relative;
+		}
+
+		.board-wrap::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			border-radius: 24px;
+			background:
+				radial-gradient(circle at 20% 30%, rgba(129, 140, 248, 0.08), transparent 40%),
+				radial-gradient(circle at 80% 70%, rgba(56, 189, 248, 0.06), transparent 40%);
+			pointer-events: none;
+		}
+
+		.board {
+			display: grid;
+			gap: clamp(6px, 1.1vw, 12px);
+			width: min(100%, calc(var(--grid-size) * var(--cell-size) + (var(--grid-size) - 1) * 12px));
+			aspect-ratio: 1;
+			touch-action: manipulation;
+		}
+
+		@supports not (aspect-ratio: 1) {
+			.board::before {
+				content: '';
+				width: 0;
+				padding-bottom: 100%;
+				grid-row: 1 / 1;
+				grid-column: 1 / 1;
+			}
+
+			.board > *:first-child {
+				grid-row: 1 / 1;
+				grid-column: 1 / 1;
+			}
+		}
+
+		.cell {
+			border: 0;
+			border-radius: clamp(10px, 1.7vw, 18px);
+			background: linear-gradient(145deg, #ffffff, #eef2ff);
+			color: #1e1b4b;
+			font-weight: 900;
+			font-size: clamp(20px, calc(5.5vw / var(--grid-size) * 5), 42px);
+			line-height: 1;
+			cursor: pointer;
+			touch-action: manipulation;
+			-webkit-touch-callout: none;
+			position: relative;
+			box-shadow:
+				0 10px 20px rgba(79, 70, 229, 0.12),
+				inset 0 0 0 1px rgba(99, 102, 241, 0.12),
+				inset 0 1px 0 rgba(255, 255, 255, 0.9);
+			transition: transform 0.15s cubic-bezier(.25, .8, .25, 1.2), box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+		}
+
+		.cell::after {
+			content: '';
+			position: absolute;
+			inset: 0;
+			border-radius: inherit;
+			background: radial-gradient(circle, rgba(79, 70, 229, 0.3) 0%, transparent 70%);
+			opacity: 0;
+			transition: opacity 0.3s ease;
+			pointer-events: none;
+		}
+
+		.cell:active:not(:disabled)::after {
+			opacity: 1;
+			transition: opacity 0s;
+		}
+
+		.cell:hover:not(:disabled) {
+			transform: translateY(-2px) scale(1.015);
+			box-shadow: 0 16px 28px rgba(79, 70, 229, 0.18), inset 0 0 0 1px rgba(79, 70, 229, 0.3);
+		}
+
+		.cell:active:not(:disabled) {
+			transform: scale(0.96);
+		}
+
+		.cell.done {
+			background: linear-gradient(145deg, #dcfce7, #a7f3d0);
+			color: #047857;
+			box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.32), 0 2px 8px rgba(16, 185, 129, 0.14);
+			animation: popDone 0.28s cubic-bezier(.2, 1.25, .4, 1) both;
+		}
+
+		@keyframes popDone {
+			0% { transform: scale(0.8); opacity: 0.5; }
+			60% { transform: scale(1.08); opacity: 1; }
+			100% { transform: scale(1); opacity: 1; }
+		}
+
+		.cell.enter {
+			animation: cellEnter 0.4s ease both;
+		}
+
+		@keyframes cellEnter {
+			0% { opacity: 0; transform: scale(0.3) translateY(12px); }
+			100% { opacity: 1; transform: scale(1) translateY(0); }
+		}
+
+		.cell.next {
+			box-shadow:
+				0 0 0 4px rgba(79, 70, 229, 0.5),
+				0 0 24px rgba(79, 70, 229, 0.25),
+				0 14px 32px rgba(79, 70, 229, 0.18);
+			animation: nextPulse 1.4s ease-in-out infinite;
+		}
+
+		@keyframes nextPulse {
+			0%, 100% {
+				box-shadow:
+					0 0 0 4px rgba(79, 70, 229, 0.35),
+					0 0 18px rgba(79, 70, 229, 0.16),
+					0 14px 32px rgba(79, 70, 229, 0.12);
+			}
+			50% {
+				box-shadow:
+					0 0 0 6px rgba(79, 70, 229, 0.55),
+					0 0 32px rgba(79, 70, 229, 0.32),
+					0 18px 40px rgba(79, 70, 229, 0.22);
+			}
+		}
+
+		.board.hide-next-hint .cell.next {
+			box-shadow:
+				0 10px 20px rgba(79, 70, 229, 0.12),
+				inset 0 0 0 1px rgba(99, 102, 241, 0.12),
+				inset 0 1px 0 rgba(255, 255, 255, 0.9);
+		}
+
+		.cell.wrong {
+			animation: shake 0.28s ease both;
+			background: linear-gradient(145deg, #fee2e2, #fecaca);
+			color: #b91c1c;
+		}
+
+		.cell:disabled {
+			cursor: default;
+		}
+
+.status-line {
+			text-align: center;
+			color: var(--muted);
+			font-size: 14px;
+			font-weight: 700;
+			min-height: 22px;
+			transition: color 0.3s ease;
+		}
+
+		.stat b {
+			font-size: clamp(22px, 3vw, 34px);
+			line-height: 1;
+			letter-spacing: -0.04em;
+			transition: transform 0.15s ease;
+		}
+
+		.stat.bump b {
+			animation: statBump 0.25s ease;
+		}
+
+		@keyframes statBump {
+			0% { transform: scale(1.3); }
+			100% { transform: scale(1); }
+		}
+
+		.time-danger {
+			animation: dangerPulse 0.6s ease-in-out infinite;
+		}
+
+		@keyframes dangerPulse {
+			0%, 100% { color: var(--text); }
+			50% { color: var(--danger); }
+		}
+
+		.side-title {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 8px;
+		}
+
+		.side-title h2 {
+			font-size: 20px;
+			letter-spacing: -0.02em;
+		}
+
+		.leader-filter {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 8px;
+		}
+
+		.leader-list {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			max-height: 430px;
+			overflow: auto;
+			padding-right: 2px;
+		}
+
+		.record {
+			display: grid;
+			grid-template-columns: 34px 1fr auto;
+			gap: 10px;
+			align-items: center;
+			padding: 11px;
+			border-radius: 15px;
+			background: rgba(255, 255, 255, 0.74);
+			border: 1px solid var(--border);
+		}
+
+.rank {
+			width: 30px;
+			height: 30px;
+			display: grid;
+			place-items: center;
+			border-radius: 10px;
+			background: var(--primary-soft);
+			color: var(--primary-dark);
+			font-weight: 900;
+			transition: transform 0.2s ease;
+		}
+
+		.rank.gold {
+			background: linear-gradient(135deg, #fbbf24, #f59e0b);
+			color: #fff;
+			box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+		}
+
+		.rank.silver {
+			background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+			color: #fff;
+			box-shadow: 0 4px 12px rgba(148, 163, 184, 0.3);
+		}
+
+		.rank.bronze {
+			background: linear-gradient(135deg, #f59e0b, #d97706);
+			color: #fff;
+			box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+		}
+
+		.record {
+			display: grid;
+			grid-template-columns: 34px 1fr auto;
+			gap: 10px;
+			align-items: center;
+			padding: 11px;
+			border-radius: 15px;
+			background: rgba(255, 255, 255, 0.74);
+			border: 1px solid var(--border);
+			transition: transform 0.2s ease, box-shadow 0.2s ease;
+		}
+
+		.record:hover {
+			transform: translateX(3px);
+			box-shadow: 0 4px 16px rgba(79, 70, 229, 0.1);
+		}
+
+		.record strong {
+			display: block;
+			font-size: 14px;
+		}
+
+		.record small {
+			color: var(--muted);
+			font-weight: 700;
+		}
+
+		.score {
+			font-size: 18px;
+			font-weight: 900;
+			color: var(--primary-dark);
+			white-space: nowrap;
+		}
+
+		.empty {
+			padding: 22px;
+			border-radius: 16px;
+			background: rgba(255, 255, 255, 0.58);
+			border: 1px dashed rgba(100, 116, 139, 0.36);
+			text-align: center;
+			color: var(--muted);
+			font-weight: 700;
+		}
+
+		.tip {
+			font-size: 13px;
+			line-height: 1.65;
+			color: var(--muted);
+			background: rgba(238, 242, 255, 0.72);
+			border: 1px solid rgba(99, 102, 241, 0.14);
+			border-radius: 16px;
+			padding: 12px;
+		}
+
+		.overlay {
+			position: fixed;
+			inset: 0;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			padding: 22px;
+			background: rgba(15, 23, 42, 0.48);
+			backdrop-filter: blur(8px);
+			z-index: 20;
+		}
+
+		.overlay.show {
+			display: flex;
+			animation: overlayFadeIn 0.25s ease;
+		}
+
+		@keyframes overlayFadeIn {
+			from { background: rgba(15, 23, 42, 0); backdrop-filter: blur(0); }
+			to { background: rgba(15, 23, 42, 0.48); backdrop-filter: blur(8px); }
+		}
+
+		#confetti-canvas {
+			position: fixed;
+			inset: 0;
+			pointer-events: none;
+			z-index: 25;
+		}
+
+		.dialog {
+			width: min(420px, 100%);
+			background: var(--surface-solid);
+			border-radius: 26px;
+			padding: 26px;
+			text-align: center;
+			box-shadow: 0 30px 100px rgba(15, 23, 42, 0.32);
+			animation: dialogIn 0.26s cubic-bezier(.2, 1.25, .4, 1) both;
+		}
+
+		.dialog h2 {
+			font-size: 30px;
+			margin-bottom: 8px;
+			letter-spacing: -0.04em;
+		}
+
+		.dialog p {
+			color: var(--muted);
+			font-weight: 700;
+			line-height: 1.6;
+			margin-bottom: 18px;
+		}
+
+		.dialog-actions {
+			display: flex;
+			justify-content: center;
+			gap: 10px;
+		}
+
+		@keyframes shake {
+			0%, 100% { transform: translateX(0); }
+			25% { transform: translateX(-6px); }
+			75% { transform: translateX(6px); }
+		}
+
+		@keyframes dialogIn {
+			from { opacity: 0; transform: translateY(22px) scale(0.92); }
+			to { opacity: 1; transform: translateY(0) scale(1); }
+		}
+
+		@media (hover: none) {
+			.btn:hover,
+			.cell:hover:not(:disabled) {
+				transform: none;
+			}
+		}
+
+		@media (max-width: 980px) {
+			body { padding: 14px; }
+			.app { grid-template-columns: 1fr; }
+			.main-panel { min-height: auto; }
+			.side-panel { position: static; }
+		}
+
+
+		@media (max-width: 720px) {
+			.header { align-items: flex-start; flex-direction: column; order: 0; }
+			.board-wrap { min-height: 350px; padding: 10px; order: 1; }
+			.status-line { order: 2; }
+			.stats { order: 3; }
+			.controls { order: 4; }
+			.controls, .stats { grid-template-columns: 1fr 1fr; }
+			.target-tip { align-self: stretch; justify-content: center; }
+		}
+
+		@media (max-width: 460px) {
+			body { padding: 10px; }
+			.app { gap: 12px; }
+			.main-panel, .side-panel { padding: 12px; border-radius: 18px; }
+			.controls { grid-template-columns: 1fr 1fr; gap: 8px; }
+			.stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+			.control-card, .stat { padding: 10px; }
+			.title p { display: none; }
+			.board-wrap { min-height: auto; padding: 8px; }
+			.board { gap: clamp(4px, 1.6vw, 8px); }
+			.cell { border-radius: 10px; min-height: 0; }
+			.dialog-actions { flex-direction: column; }
+		}
+
+		@media (max-width: 360px) {
+			.controls, .stats { grid-template-columns: 1fr; }
+			.title h1 { font-size: 24px; }
+			.btn { padding: 10px 9px; }
+		}
+	</style>
+</head>
+
+<body>
+	<canvas id="confetti-canvas"></canvas>
+	<div class="app">
+			<main class="main-panel">
+			<header class="header">
+				<div class="title">
+					<h1>舒尔特方格</h1>
+						<p>按 1 到最大数字依次点击，训练专注力、视觉搜索和反应速度。</p>
+				</div>
+				<div class="target-tip" id="target-tip">
+					<span class="badge" id="target-badge">下一个：1</span>
+					<button class="tip-close" type="button" aria-label="关闭下一个提示" onclick="closeTargetTip()">×</button>
+				</div>
+			</header>
+
+			<section class="controls">
+				<div class="control-card">
+					<label for="size-select">方格尺寸</label>
+					<select id="size-select" onchange="changeSize()">
+						<option value="3">3 × 3 入门</option>
+						<option value="4">4 × 4 热身</option>
+						<option value="5" selected>5 × 5 标准</option>
+						<option value="6">6 × 6 进阶</option>
+						<option value="7">7 × 7 挑战</option>
+					</select>
+				</div>
+				<div class="control-card">
+					<label>训练模式</label>
+					<div class="mode-group">
+						<button class="btn active" id="mode-timer" onclick="setMode('timer')">计时</button>
+						<button class="btn" id="mode-limit" onclick="setMode('limit')">限时</button>
+					</div>
+				</div>
+				<div class="control-card">
+					<label for="limit-select">限时时长</label>
+					<select id="limit-select" onchange="changeLimit()">
+						<option value="15">15 秒</option>
+						<option value="30" selected>30 秒</option>
+						<option value="60">60 秒</option>
+						<option value="90">90 秒</option>
+					</select>
+				</div>
+				<div class="control-card">
+					<label>高亮提示</label>
+					<div class="mode-group">
+						<button class="btn active" id="hint-on" onclick="setNextHint(true)">开启</button>
+						<button class="btn" id="hint-off" onclick="setNextHint(false)">关闭</button>
+					</div>
+				</div>
+				<div class="control-card">
+					<label>操作</label>
+					<div class="button-group">
+						<button class="btn primary" onclick="startGame()">开始</button>
+						<button class="btn ghost" onclick="resetGame()">重置</button>
+					</div>
+				</div>
+			</section>
+
+			<section class="stats">
+				<div class="stat"><span>时间</span><b id="time-display">0.0</b></div>
+				<div class="stat"><span>进度</span><b id="progress-display">0/25</b></div>
+				<div class="stat"><span>正确率</span><b id="accuracy-display">100%</b></div>
+				<div class="stat"><span>最佳</span><b id="best-display">--</b></div>
+			</section>
+
+			<div class="board-wrap">
+				<div class="board" id="board" aria-label="舒尔特方格"></div>
+			</div>
+
+			<div class="status-line" id="status-line">选择尺寸和模式后点击“开始”，或直接点击数字开始训练。</div>
+		</main>
+
+			<aside class="side-panel">
+			<div class="side-title">
+				<h2>历史排行榜</h2>
+				<button class="btn ghost" onclick="clearRecords()">清空</button>
+			</div>
+			<div class="leader-filter">
+				<select id="rank-size" onchange="renderRecords()">
+					<option value="current">当前尺寸</option>
+					<option value="all">全部尺寸</option>
+					<option value="3">3 × 3</option>
+					<option value="4">4 × 4</option>
+					<option value="5">5 × 5</option>
+					<option value="6">6 × 6</option>
+					<option value="7">7 × 7</option>
+				</select>
+				<select id="rank-mode" onchange="renderRecords()">
+					<option value="current">当前模式</option>
+					<option value="all">全部模式</option>
+					<option value="timer">计时</option>
+					<option value="limit">限时</option>
+				</select>
+			</div>
+			<div class="leader-list" id="leader-list"></div>
+			<div class="tip">
+				计时模式排行榜按完成时间排序；限时模式按完成数量排序，同分时用时更短者靠前。历史记录保存在当前浏览器本地。
+			</div>
+		</aside>
+	</div>
+
+	<div class="overlay" id="overlay">
+		<div class="dialog">
+			<h2 id="dialog-title">完成训练</h2>
+				<p id="dialog-message"></p>
+			<div class="dialog-actions">
+				<button class="btn primary" onclick="startGame(); hideDialog();">再来一次</button>
+				<button class="btn ghost" onclick="hideDialog();">查看方格</button>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		const STORAGE_KEY = 'schulte_records_v1';
+		const TARGET_TIP_KEY = 'schulte_target_tip_closed';
+		const NEXT_HINT_KEY = 'schulte_next_hint_enabled';
+		const boardEl = document.getElementById('board');
+		const sizeSelect = document.getElementById('size-select');
+		const limitSelect = document.getElementById('limit-select');
+		const timeDisplay = document.getElementById('time-display');
+		const progressDisplay = document.getElementById('progress-display');
+		const accuracyDisplay = document.getElementById('accuracy-display');
+		const bestDisplay = document.getElementById('best-display');
+		const targetTip = document.getElementById('target-tip');
+		const targetBadge = document.getElementById('target-badge');
+		const statusLine = document.getElementById('status-line');
+		const leaderList = document.getElementById('leader-list');
+
+		let size = 5;
+		let mode = 'timer';
+		let limitSeconds = 30;
+		let numbers = [];
+		let nextNumber = 1;
+		let started = false;
+		let finished = false;
+		let startedAt = 0;
+		let elapsed = 0;
+		let mistakes = 0;
+		let clicks = 0;
+		let ticker = null;
+		let nextHintEnabled = true;
+
+		function shuffle(values) {
+			const copy = [...values];
+			for (let i = copy.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[copy[i], copy[j]] = [copy[j], copy[i]];
+			}
+			return copy;
+		}
+
+		function resetGame() {
+			clearInterval(ticker);
+			ticker = null;
+			started = false;
+			finished = false;
+			startedAt = 0;
+			elapsed = 0;
+			mistakes = 0;
+			clicks = 0;
+			nextNumber = 1;
+			numbers = shuffle(Array.from({ length: size * size }, (_, index) => index + 1));
+			renderBoard();
+			updateStats();
+			statusLine.textContent = '点击“开始”或直接点击数字 1 开始训练。';
+		}
+
+		function startGame() {
+			resetGame();
+			startTicker();
+			statusLine.textContent = mode === 'timer' ? '计时已开始，按顺序点击所有数字。' : `限时 ${limitSeconds} 秒已开始，尽可能多地按顺序点击。`;
+		}
+
+		function startTicker() {
+			if (started || finished) return;
+			started = true;
+			startedAt = performance.now();
+			ticker = setInterval(updateTime, 100);
+			updateTime();
+		}
+
+		function updateTime() {
+			const now = performance.now();
+			const seconds = (now - startedAt) / 1000;
+			elapsed = mode === 'limit' ? Math.max(0, limitSeconds - seconds) : seconds;
+			timeDisplay.parentElement.classList.toggle('time-danger', mode === 'limit' && elapsed > 0 && elapsed <= 10);
+			if (mode === 'limit' && elapsed <= 0) {
+				elapsed = 0;
+				finishGame(false, 'timeup');
+				return;
+			}
+			updateStats();
+		}
+
+		function renderBoard() {
+			boardEl.style.setProperty('--grid-size', size);
+			boardEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+			boardEl.innerHTML = numbers.map(number => `<button class="cell" data-number="${number}" aria-label="数字 ${number}" style="animation-delay:${(number-1)*0.03}s">${number}</button>`).join('');
+			document.querySelectorAll('.cell').forEach(cell => cell.classList.add('enter'));
+			highlightNext();
+		}
+
+		function handleCellClick(event) {
+			const cell = event.target.closest('.cell');
+			if (!cell || finished) return;
+
+			const value = Number(cell.dataset.number);
+			if (!started) startTicker();
+			clicks++;
+
+			if (value === nextNumber) {
+				cell.classList.add('done');
+				cell.disabled = true;
+				nextNumber++;
+				if (navigator.vibrate) navigator.vibrate(12);
+				if (nextNumber > size * size) {
+					finishGame(true, 'complete');
+				} else {
+					highlightNext();
+					statusLine.textContent = `很好，继续找数字 ${nextNumber}。`;
+				}
+			} else {
+				mistakes++;
+				cell.classList.remove('wrong');
+				void cell.offsetWidth;
+				cell.classList.add('wrong');
+				statusLine.textContent = `当前应该点击 ${nextNumber}，不是 ${value}。`;
+			}
+			updateStats();
+		}
+
+		function highlightNext() {
+			boardEl.classList.toggle('hide-next-hint', !nextHintEnabled);
+			document.querySelectorAll('.cell.next').forEach(cell => cell.classList.remove('next'));
+			const nextCell = document.querySelector(`.cell[data-number="${nextNumber}"]`);
+			if (nextCell && started && nextHintEnabled) nextCell.classList.add('next');
+		}
+
+		function finishGame(completed, reason) {
+			if (finished) return;
+			finished = true;
+			started = false;
+			clearInterval(ticker);
+			ticker = null;
+
+			const usedSeconds = startedAt ? (performance.now() - startedAt) / 1000 : 0;
+			const completedCount = nextNumber - 1;
+			const record = {
+				id: Date.now(),
+				size,
+				mode,
+				limitSeconds: mode === 'limit' ? limitSeconds : null,
+				completed,
+				completedCount,
+				total: size * size,
+				seconds: Number(usedSeconds.toFixed(2)),
+				mistakes,
+				accuracy: getAccuracy(),
+				createdAt: new Date().toISOString()
+			};
+
+			if (completed || mode === 'limit') saveRecord(record);
+			updateStats();
+			renderRecords();
+			showResult(record, reason);
+		}
+
+function showResult(record, reason) {
+			const title = document.getElementById('dialog-title');
+			const message = document.getElementById('dialog-message');
+			if (reason === 'timeup') {
+				title.textContent = '时间到';
+				message.innerHTML = `完成 ${record.completedCount}/${record.total} 个数字<br>正确率 ${record.accuracy}% · 误点 ${record.mistakes} 次`;
+			} else {
+				title.textContent = '完成训练';
+				message.innerHTML = `用时 ${formatSeconds(record.seconds)}<br>正确率 ${record.accuracy}% · 误点 ${record.mistakes} 次`;
+				fireConfetti();
+			}
+			document.getElementById('overlay').classList.add('show');
+		}
+
+		function hideDialog() {
+			document.getElementById('overlay').classList.remove('show');
+		}
+
+		function updateStats() {
+			const completedCount = nextNumber - 1;
+			const total = size * size;
+			const timeText = elapsed.toFixed(1);
+			const progressText = `${completedCount}/${total}`;
+			const accuracyText = `${getAccuracy()}%`;
+			timeDisplay.textContent = timeText;
+			if (progressDisplay.textContent !== progressText) {
+				progressDisplay.textContent = progressText;
+				progressDisplay.parentElement.classList.remove('bump');
+				void progressDisplay.parentElement.offsetWidth;
+				progressDisplay.parentElement.classList.add('bump');
+			}
+			if (accuracyDisplay.textContent !== accuracyText) {
+				accuracyDisplay.textContent = accuracyText;
+				accuracyDisplay.parentElement.classList.remove('bump');
+				void accuracyDisplay.parentElement.offsetWidth;
+				accuracyDisplay.parentElement.classList.add('bump');
+			}
+			targetBadge.textContent = completedCount >= total ? '已完成' : `下一个：${nextNumber}`;
+			bestDisplay.textContent = getBestText();
+		}
+
+		function getAccuracy() {
+			if (clicks === 0) return 100;
+			return Math.max(0, Math.round(((clicks - mistakes) / clicks) * 100));
+		}
+
+		function setMode(nextMode) {
+			mode = nextMode;
+			document.getElementById('mode-timer').classList.toggle('active', mode === 'timer');
+			document.getElementById('mode-limit').classList.toggle('active', mode === 'limit');
+			limitSelect.disabled = mode !== 'limit';
+			resetGame();
+			renderRecords();
+		}
+
+		function changeSize() {
+			size = Number(sizeSelect.value);
+			resetGame();
+			renderRecords();
+		}
+
+		function changeLimit() {
+			limitSeconds = Number(limitSelect.value);
+			resetGame();
+			renderRecords();
+		}
+
+		function getRecords() {
+			try {
+				return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+			} catch (error) {
+				return [];
+			}
+		}
+
+		function saveRecord(record) {
+			const records = getRecords();
+			records.push(record);
+			const trimmed = records
+				.sort(compareRecords)
+				.slice(0, 200);
+			localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+		}
+
+		function compareRecords(a, b) {
+			if (a.mode !== b.mode) return a.mode.localeCompare(b.mode);
+			if (a.mode === 'timer') {
+				if (a.completed !== b.completed) return a.completed ? -1 : 1;
+				return a.seconds - b.seconds || b.accuracy - a.accuracy || a.mistakes - b.mistakes;
+			}
+			return b.completedCount - a.completedCount || a.seconds - b.seconds || b.accuracy - a.accuracy || a.mistakes - b.mistakes;
+		}
+
+		function getFilteredRecords() {
+			const rankSize = document.getElementById('rank-size').value;
+			const rankMode = document.getElementById('rank-mode').value;
+			return getRecords()
+				.filter(record => rankSize === 'all' || record.size === Number(rankSize === 'current' ? size : rankSize))
+				.filter(record => rankMode === 'all' || record.mode === (rankMode === 'current' ? mode : rankMode))
+				.sort(compareRecords)
+				.slice(0, 20);
+		}
+
+		function renderRecords() {
+			const records = getFilteredRecords();
+			if (!records.length) {
+				leaderList.innerHTML = '<div class="empty">暂无历史记录<br>完成一次训练后会出现在这里</div>';
+				updateStats();
+				return;
+			}
+
+			leaderList.innerHTML = records.map((record, index) => {
+				const modeText = record.mode === 'timer' ? '计时' : `限时 ${record.limitSeconds}s`;
+				const scoreText = record.mode === 'timer' ? formatSeconds(record.seconds) : `${record.completedCount}/${record.total}`;
+				const date = new Date(record.createdAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+				const rankClass = ['gold', 'silver', 'bronze'][index] || '';
+				const medal = ['🥇', '🥈', '🥉'][index] || '';
+				return `
+					<div class="record">
+						<div class="rank ${rankClass}">${medal || index + 1}</div>
+						<div>
+							<strong>${record.size}×${record.size} · ${modeText}</strong>
+								<small>${date} · 正确率 ${record.accuracy}% · 误点 ${record.mistakes}</small>
+						</div>
+						<div class="score">${scoreText}</div>
+					</div>
+				`;
+			}).join('');
+			updateStats();
+		}
+
+		function getBestText() {
+			const best = getRecords()
+				.filter(record => record.size === size && record.mode === mode)
+				.sort(compareRecords)[0];
+			if (!best) return '--';
+			return mode === 'timer' ? formatSeconds(best.seconds) : `${best.completedCount}/${best.total}`;
+		}
+
+		function clearRecords() {
+			if (!confirm('确定清空所有舒尔特方格历史记录吗？')) return;
+			localStorage.removeItem(STORAGE_KEY);
+			renderRecords();
+		}
+
+		function formatSeconds(seconds) {
+			return `${Number(seconds).toFixed(1)}s`;
+		}
+
+		// ── Confetti particle system ──
+		const confettiCanvas = document.getElementById('confetti-canvas');
+		const confettiCtx = confettiCanvas.getContext('2d');
+		let confettiParticles = [];
+		let confettiRunning = false;
+
+		function fireConfetti() {
+			confettiCanvas.width = window.innerWidth;
+			confettiCanvas.height = window.innerHeight;
+			const colors = ['#4f46e5', '#7c3aed', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#f97316'];
+			confettiParticles = Array.from({ length: 120 }, () => ({
+				x: Math.random() * confettiCanvas.width,
+				y: -20 - Math.random() * 60,
+				size: Math.random() * 8 + 3,
+				color: colors[Math.floor(Math.random() * colors.length)],
+				velocityX: (Math.random() - 0.5) * 6,
+				velocityY: Math.random() * 4 + 2,
+				rotation: Math.random() * 360,
+				rotationSpeed: (Math.random() - 0.5) * 12,
+				opacity: 1,
+				drift: Math.random() * 0.02
+			}));
+			if (!confettiRunning) {
+				confettiRunning = true;
+				requestAnimationFrame(confettiLoop);
+			}
+		}
+
+		function confettiLoop() {
+			confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+			let active = false;
+			for (const p of confettiParticles) {
+				p.x += p.velocityX;
+				p.y += p.velocityY;
+				p.velocityY += 0.08;
+				p.velocityX += Math.sin(p.y * p.drift) * 0.3;
+				p.rotation += p.rotationSpeed;
+				p.opacity = Math.max(0, p.opacity - 0.004);
+				if (p.opacity <= 0 || p.y > confettiCanvas.height + 40) continue;
+				active = true;
+				confettiCtx.save();
+				confettiCtx.globalAlpha = p.opacity;
+				confettiCtx.translate(p.x, p.y);
+				confettiCtx.rotate((p.rotation * Math.PI) / 180);
+				confettiCtx.fillStyle = p.color;
+				confettiCtx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+				confettiCtx.restore();
+			}
+			if (active) {
+				requestAnimationFrame(confettiLoop);
+			} else {
+				confettiRunning = false;
+				confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+			}
+		}
+
+		function setNextHint(enabled) {
+			nextHintEnabled = enabled;
+			document.getElementById('hint-on').classList.toggle('active', enabled);
+			document.getElementById('hint-off').classList.toggle('active', !enabled);
+			try {
+				localStorage.setItem(NEXT_HINT_KEY, enabled ? '1' : '0');
+			} catch (error) {}
+			highlightNext();
+		}
+
+		function restoreNextHint() {
+			try {
+				if (localStorage.getItem(NEXT_HINT_KEY) === '0') {
+					nextHintEnabled = false;
+				}
+			} catch (error) {}
+			document.getElementById('hint-on').classList.toggle('active', nextHintEnabled);
+			document.getElementById('hint-off').classList.toggle('active', !nextHintEnabled);
+			boardEl.classList.toggle('hide-next-hint', !nextHintEnabled);
+		}
+
+		function closeTargetTip() {
+			targetTip.classList.add('hidden');
+			try {
+				localStorage.setItem(TARGET_TIP_KEY, '1');
+			} catch (error) {}
+		}
+
+		function restoreTargetTip() {
+			try {
+				if (localStorage.getItem(TARGET_TIP_KEY) === '1') {
+					targetTip.classList.add('hidden');
+				}
+			} catch (error) {}
+		}
+
+		boardEl.addEventListener('click', handleCellClick);
+		limitSelect.disabled = true;
+		restoreNextHint();
+		restoreTargetTip();
+		resetGame();
+		renderRecords();
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roam Capture</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-color: #1f2937;
+            --border-color: #e5e7eb;
+            --overlay-bg: rgba(255, 255, 255, 0.95);
+            --secondary-text: #6b7280;
+            --danger-color: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+            overflow: hidden;
+            margin-top: 2vh;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            margin: 0;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .settings-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            color: #6b7280;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-btn:hover {
+            background-color: #f3f4f6;
+            color: var(--primary-color);
+            transform: rotate(30deg);
+        }
+
+        .settings-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--overlay-bg);
+            padding: 2rem;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            z-index: 10;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .settings-panel.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .settings-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        label {
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 0; 
+        }
+
+        .btn-text-action {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .btn-text-action:hover {
+            background-color: #eff6ff;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="date"],
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        
+        .btn-primary:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: #374151;
+            margin-top: 0.5rem;
+        }
+
+        .status {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-align: center;
+            display: none;
+        }
+
+        .status.success { background-color: #d1fae5; color: #065f46; }
+        .status.error { background-color: #fee2e2; color: #991b1b; }
+
+        /* --- 历史记录区域样式 --- */
+        .history-section {
+            margin-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+        }
+
+        .history-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-clear-all {
+            font-size: 0.75rem;
+            color: var(--danger-color);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .btn-clear-all:hover {
+            background-color: #fee2e2;
+        }
+
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        details {
+            margin-bottom: 0.75rem;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid transparent;
+        }
+
+        details[open] {
+            border-color: var(--border-color);
+            background-color: #fff;
+        }
+
+        summary {
+            padding: 0.75rem;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-color);
+            background-color: #f9fafb;
+            display: flex;
+            justify-content: space-between; /* 让内容和删除按钮分开 */
+            align-items: center;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        summary:hover {
+            background-color: #f3f4f6;
+        }
+
+        /* 自定义 summary 样式 */
+        summary .summary-text {
+            display: flex;
+            align-items: center;
+        }
+
+        /* 组删除按钮 */
+        .btn-delete-group {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            transition: color 0.2s;
+        }
+        
+        .btn-delete-group:hover {
+            color: var(--danger-color);
+            background-color: #fee2e2;
+        }
+
+        .history-items {
+            padding: 0 1rem 1rem 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .history-item {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #4b5563;
+            display: flex; /* 使用 Flexbox 布局 */
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-info {
+            flex: 1;
+            min-width: 0; /* 防止内容撑开 */
+        }
+
+        .item-time {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-bottom: 0.25rem;
+        }
+
+        .item-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* 单条删除按钮 */
+        .btn-delete-item {
+            background: none;
+            border: none;
+            color: #d1d5db;
+            cursor: pointer;
+            padding: 4px;
+            margin-top: 2px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover .btn-delete-item {
+            color: #9ca3af; /* hover item 时显示按钮 */
+        }
+
+        .btn-delete-item:hover {
+            color: var(--danger-color) !important;
+            background-color: #fee2e2;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: var(--secondary-text);
+            font-size: 0.85rem;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div class="header-row">
+        <h2>Roam Capture</h2>
+        <button id="toggleSettingsBtn" class="settings-btn" title="设置 API Key">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        </button>
+    </div>
+
+    <div id="settingsPanel" class="settings-panel">
+        <div class="settings-title">API 配置</div>
+        <div class="form-group">
+            <label for="graphName">Graph Name</label>
+            <input type="text" id="graphName" placeholder="例如: my-knowledge-base">
+        </div>
+        <div class="form-group">
+            <label for="apiKey">API Key (Token)</label>
+            <input type="password" id="apiKey" placeholder="roam-graph-token-...">
+        </div>
+        <button id="saveConfigBtn" class="btn btn-primary">保存并返回</button>
+        <button id="cancelConfigBtn" class="btn btn-secondary">取消</button>
+    </div>
+
+    <div class="form-group">
+        <div class="label-row">
+            <label for="datePicker">日期</label>
+        </div>
+        <input type="date" id="datePicker">
+    </div>
+
+    <div class="form-group">
+        <div class="label-row">
+            <label for="content">内容</label>
+            <button id="insertTimeBtn" class="btn-text-action" title="插入当前时间到最前面">🕒 插入时间</button>
+        </div>
+        <textarea id="content" placeholder="输入想要记录的内容..."></textarea>
+    </div>
+
+    <button id="submitBtn" class="btn btn-primary">发送到 Roam</button>
+
+    <div id="statusMsg" class="status"></div>
+
+    <div class="history-section">
+        <div class="history-title">
+            <span>已发送记录 (本地)</span>
+            <button id="clearAllBtn" class="btn-clear-all" title="删除所有本地记录">清空全部</button>
+        </div>
+        <div id="historyContainer" class="history-list">
+            <div class="empty-history">暂无发送记录</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // UI 引用
+        const settingsPanel = document.getElementById('settingsPanel');
+        const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
+        const saveConfigBtn = document.getElementById('saveConfigBtn');
+        const cancelConfigBtn = document.getElementById('cancelConfigBtn');
+        const graphNameInput = document.getElementById('graphName');
+        const apiKeyInput = document.getElementById('apiKey');
+        const datePicker = document.getElementById('datePicker');
+        const contentInput = document.getElementById('content');
+        const submitBtn = document.getElementById('submitBtn');
+        const statusMsg = document.getElementById('statusMsg');
+        const historyContainer = document.getElementById('historyContainer');
+        const insertTimeBtn = document.getElementById('insertTimeBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+
+        // 初始化
+        const today = new Date().toISOString().split('T')[0];
+        datePicker.value = today;
+
+        loadConfig();
+        renderHistory();
+
+        if (!graphNameInput.value || !apiKeyInput.value) {
+            openSettings();
+        }
+
+        // --- 事件监听 ---
+
+        // 插入时间
+        insertTimeBtn.addEventListener('click', () => {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const timeStr = `${hours}:${minutes} `; 
+            contentInput.value = timeStr + contentInput.value;
+            const cursorPosition = timeStr.length;
+            contentInput.focus();
+            contentInput.setSelectionRange(cursorPosition, cursorPosition);
+        });
+
+        // 设置面板
+        toggleSettingsBtn.addEventListener('click', () => settingsPanel.classList.contains('active') ? closeSettings() : openSettings());
+        
+        saveConfigBtn.addEventListener('click', () => {
+            const gName = graphNameInput.value.trim();
+            const key = apiKeyInput.value.trim();
+            if (!gName || !key) { alert("请填写完整的 Graph Name 和 API Key"); return; }
+            localStorage.setItem('roam_graph_name', gName);
+            localStorage.setItem('roam_api_token', key);
+            showStatus('配置已保存', 'success');
+            closeSettings();
+        });
+
+        cancelConfigBtn.addEventListener('click', () => { loadConfig(); closeSettings(); });
+        
+        // 发送
+        submitBtn.addEventListener('click', sendToRoam);
+
+        // 清空全部历史
+        clearAllBtn.addEventListener('click', () => {
+            if (confirm("确定要清空所有本地历史记录吗？此操作不可恢复。")) {
+                localStorage.removeItem('roam_history');
+                renderHistory();
+            }
+        });
+
+        // 委托监听历史记录的删除操作 (Group Delete & Item Delete)
+        historyContainer.addEventListener('click', (e) => {
+            // 1. 删除整个日期组
+            if (e.target.closest('.btn-delete-group')) {
+                e.preventDefault(); // 阻止 details 折叠
+                e.stopPropagation();
+                const btn = e.target.closest('.btn-delete-group');
+                const dateToDelete = btn.dataset.date;
+                
+                if (confirm(`确定要删除 ${dateToDelete} 的所有记录吗？`)) {
+                    deleteHistoryGroup(dateToDelete);
+                }
+                return;
+            }
+
+            // 2. 删除单条记录
+            if (e.target.closest('.btn-delete-item')) {
+                const btn = e.target.closest('.btn-delete-item');
+                const idToDelete = parseInt(btn.dataset.id);
+                deleteHistoryItem(idToDelete);
+            }
+        });
+
+
+        // --- 辅助函数 ---
+
+        function openSettings() { settingsPanel.classList.add('active'); }
+        function closeSettings() { settingsPanel.classList.remove('active'); }
+        
+        function loadConfig() {
+            const savedGraph = localStorage.getItem('roam_graph_name');
+            const savedToken = localStorage.getItem('roam_api_token');
+            if (savedGraph) graphNameInput.value = savedGraph;
+            if (savedToken) apiKeyInput.value = savedToken;
+        }
+
+        function showStatus(msg, type) {
+            statusMsg.textContent = msg;
+            statusMsg.className = `status ${type}`;
+            statusMsg.style.display = 'block';
+            setTimeout(() => { if (type === 'success') statusMsg.style.display = 'none'; }, 3000);
+        }
+
+        // --- 历史记录管理逻辑 ---
+
+        function getHistory() {
+            return JSON.parse(localStorage.getItem('roam_history') || '[]');
+        }
+
+        function saveHistoryData(history) {
+            localStorage.setItem('roam_history', JSON.stringify(history));
+            renderHistory();
+        }
+
+        function saveToHistory(content, targetDate) {
+            let history = getHistory();
+            const newItem = {
+                id: Date.now(),
+                content: content,
+                targetDate: targetDate, 
+                timestamp: new Date().getTime()
+            };
+            history.push(newItem);
+            saveHistoryData(history);
+        }
+
+        function deleteHistoryItem(id) {
+            let history = getHistory();
+            const newHistory = history.filter(item => item.id !== id);
+            saveHistoryData(newHistory);
+        }
+
+        function deleteHistoryGroup(date) {
+            let history = getHistory();
+            const newHistory = history.filter(item => item.targetDate !== date);
+            saveHistoryData(newHistory);
+        }
+
+        function renderHistory() {
+            const history = getHistory();
+            
+            if (history.length === 0) {
+                historyContainer.innerHTML = '<div class="empty-history">暂无发送记录</div>';
+                clearAllBtn.style.display = 'none'; // 没有记录时隐藏清空按钮
+                return;
+            }
+            clearAllBtn.style.display = 'block';
+
+            // 过滤最近30天
+            const thirtyDaysAgo = new Date().getTime() - (30 * 24 * 60 * 60 * 1000);
+            const recentHistory = history.filter(item => item.timestamp > thirtyDaysAgo);
+
+            if (recentHistory.length === 0) {
+                historyContainer.innerHTML = '<div class="empty-history">没有最近30天的记录</div>';
+                return;
+            }
+
+            // 分组
+            const grouped = recentHistory.reduce((acc, item) => {
+                const date = item.targetDate;
+                if (!acc[date]) acc[date] = [];
+                acc[date].push(item);
+                return acc;
+            }, {});
+
+            const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+
+            let html = '';
+            sortedDates.forEach((date, index) => {
+                const items = grouped[date].sort((a, b) => b.timestamp - a.timestamp);
+                const isOpen = index === 0 ? 'open' : '';
+                
+                html += `
+                <details ${isOpen}>
+                    <summary>
+                        <span class="summary-text">${date} (${items.length})</span>
+                        <button class="btn-delete-group" data-date="${date}" title="删除该日记录">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </summary>
+                    <div class="history-items">
+                        ${items.map(item => `
+                            <div class="history-item">
+                                <div class="item-info">
+                                    <div class="item-time">${new Date(item.timestamp).toLocaleTimeString()}</div>
+                                    <div class="item-content">${escapeHtml(item.content)}</div>
+                                </div>
+                                <button class="btn-delete-item" data-id="${item.id}" title="删除此条">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </details>`;
+            });
+
+            historyContainer.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // --- Roam 辅助函数 ---
+
+        function getRoamDateTitle(rawDate) {
+            const [year, month, day] = rawDate.split('-').map(Number);
+            const months = [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+            let suffix = 'th';
+            if (day === 1 || day === 21 || day === 31) suffix = 'st';
+            else if (day === 2 || day === 22) suffix = 'nd';
+            else if (day === 3 || day === 23) suffix = 'rd';
+            return `${months[month - 1]} ${day}${suffix}, ${year}`;
+        }
+
+        // ==========================================
+        // 核心逻辑: 乐观发送 -> 捕获400 -> 补救创建 -> 重试
+        // ==========================================
+        async function sendToRoam() {
+            const graphName = localStorage.getItem('roam_graph_name');
+            const token = localStorage.getItem('roam_api_token');
+            const rawDate = datePicker.value;
+            const content = contentInput.value;
+
+            if (!graphName || !token) { showStatus('请配置 Graph Name 和 API Key', 'error'); openSettings(); return; }
+            if (!content) { showStatus('请输入内容', 'error'); return; }
+
+            const [year, month, day] = rawDate.split('-');
+            const roamDateUid = `${month}-${day}-${year}`;
+            const roamPageTitle = getRoamDateTitle(rawDate); // 确保标题格式正确
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '发送中...';
+            statusMsg.style.display = 'none';
+
+            // 修改了 URL
+            const writeUrl = `https://peer-57.api.roamresearch.com:3000/api/graph/${graphName}/write`;
+
+            // 通用 POST 函数
+            const postRequest = async (payload) => {
+                const response = await fetch(writeUrl, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const err = new Error(`Request Failed`);
+                    err.status = response.status;
+                    err.text = await response.text();
+                    throw err;
+                }
+                return response;
+            };
+
+            try {
+                // 1. 尝试直接创建 Block
+                console.log("尝试创建 Block...");
+                await postRequest({
+                    "action": "create-block",
+                    "location": { "parent-uid": roamDateUid, "order": "last" },
+                    "block": { "string": content }
+                });
+
+                // 成功
+                saveToHistory(content, rawDate);
+                showStatus('发送成功！', 'success');
+                contentInput.value = '';
+
+            } catch (error) {
+                console.warn("初次发送失败", error);
+
+                // 2. 捕获 400 (Page missing) 或其他错误，尝试补救
+                if (error.status === 400 || (error.text && error.text.includes("parent-uid")) || error.status === 500) {
+                    
+                    showStatus('页面不存在，正在自动创建...', 'success');
+                    
+                    try {
+                        // 3. 补救：创建页面
+                        console.log(`正在创建页面: Title="${roamPageTitle}", UID="${roamDateUid}"`);
+                        await postRequest({
+                            "action": "create-page",
+                            "page": { "title": roamPageTitle, "uid": roamDateUid }
+                        });
+
+                        // 4. 重试：再次创建 Block
+                        console.log("页面创建成功，重试发送...");
+                        await postRequest({
+                            "action": "create-block",
+                            "location": { "parent-uid": roamDateUid, "order": "last" },
+                            "block": { "string": content }
+                        });
+
+                        saveToHistory(content, rawDate);
+                        showStatus('页面创建并发送成功！', 'success');
+                        contentInput.value = '';
+
+                    } catch (retryError) {
+                        console.error("重试依然失败", retryError);
+                        let msg = `无法创建页面: ${retryError.status}`;
+                        if (retryError.text) msg += ` - ${retryError.text}`;
+                        showStatus(msg, 'error');
+                    }
+
+                } else {
+                    // 其他网络错误或 Key 错误
+                    let msg = error.message;
+                    if (msg.includes('Failed to fetch')) {
+                        msg = '网络错误: 可能被浏览器 CORS 拦截，请检查控制台或使用插件。';
+                    } else if (error.text) {
+                        msg += `: ${error.text}`;
+                    }
+                    showStatus(msg, 'error');
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '发送到 Roam';
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

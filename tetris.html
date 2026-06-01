@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>俄罗斯方块 · 砖块版</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#111;--bg2:#0d0d0d;--bg3:#161616;
+  --border:#2a2a2a;--border2:#222;--border3:#1e1e1e;
+  --text:#fff;--text2:#aaa;--text3:#777;--text4:#666;--text5:#999;
+  --accent:#f84;--accent-glow:rgba(220,120,60,.2);--accent-text-glow:rgba(255,150,80,.4);
+  --overlay-bg:rgba(0,0,0,.75);
+  --canvas-bg:#0b0b0b;--grid-line:rgba(255,255,255,.03);
+  --vbtn-bg:linear-gradient(150deg,#2c2c2c,#181818);
+  --vbtn-border:#3c3c3c;--vbtn-border-b:#090909;--vbtn-color:#ccc;
+  --vbtn-active-bg:linear-gradient(150deg,#181818,#242424);
+  --vbtn-drop-bg:linear-gradient(150deg,#3a1a08,#220e04);
+  --vbtn-drop-border:#5a3018;--vbtn-drop-border-b:#0a0604;
+  --vbtn-drop-active:linear-gradient(150deg,#220e04,#3a1a08);
+  --sw-bg:#333;--sw-knob:#888;
+  --ghost-alpha:0.16;
+}
+[data-theme="light"]{
+  --bg:#e8e4df;--bg2:#ddd8d2;--bg3:#f0ece7;
+  --border:#c5bfb6;--border2:#ccc7bf;--border3:#d5d0c8;
+  --text:#2a2520;--text2:#5a554e;--text3:#7a756e;--text4:#8a857e;--text5:#6a655e;
+  --accent:#d96a20;--accent-glow:rgba(180,90,30,.15);--accent-text-glow:rgba(180,90,30,.25);
+  --overlay-bg:rgba(240,236,230,.85);
+  --canvas-bg:#f5f1ec;--grid-line:rgba(0,0,0,.06);
+  --vbtn-bg:linear-gradient(150deg,#e8e4df,#d5d0c8);
+  --vbtn-border:#c5bfb6;--vbtn-border-b:#aaa59e;--vbtn-color:#3a3530;
+  --vbtn-active-bg:linear-gradient(150deg,#d5d0c8,#e0dbd5);
+  --vbtn-drop-bg:linear-gradient(150deg,#f0c8a0,#e0b088);
+  --vbtn-drop-border:#c89868;--vbtn-drop-border-b:#b08050;
+  --vbtn-drop-active:linear-gradient(150deg,#e0b088,#f0c8a0);
+  --sw-bg:#c5bfb6;--sw-knob:#9a958e;
+  --ghost-alpha:0.22;
+}
+body{
+  background:var(--bg);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  min-height:100dvh;
+  font-family:'Courier New',monospace;
+  user-select:none;
+  overflow-x:hidden;
+  transition:background .3s;
+}
+
+/* ── DESKTOP LAYOUT ── */
+#wrapper{display:flex;gap:18px;align-items:flex-start}
+#canvasWrap{position:relative}
+#gameCanvas{
+  display:block;
+  border:2px solid var(--border);
+  box-shadow:0 0 40px var(--accent-glow);
+  transition:border-color .3s,box-shadow .3s;
+}
+#overlay{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  background:var(--overlay-bg);backdrop-filter:blur(2px);
+  transition:background .3s;
+}
+#overlay h1{font-size:30px;color:var(--accent);text-shadow:0 0 20px var(--accent);margin-bottom:14px}
+#overlay p{font-size:14px;color:var(--text2);line-height:2.2}
+
+/* Restart progress bar */
+#restartBar{
+  position:absolute;top:0;left:0;width:100%;height:4px;
+  background:transparent;pointer-events:none;z-index:10;
+}
+#restartBar .fill{
+  height:100%;width:0%;background:var(--accent);
+  box-shadow:0 0 12px var(--accent);border-radius:0 2px 2px 0;
+  transition:width .06s linear;
+}
+#restartHint{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  color:var(--accent);font-size:13px;font-family:'Courier New',monospace;
+  background:var(--overlay-bg);padding:6px 16px;border-radius:6px;
+  border:1px solid var(--accent);pointer-events:none;opacity:0;
+  transition:opacity .2s;white-space:nowrap;z-index:11;
+}
+#restartHint.show{opacity:1}
+#overlay b{color:var(--accent)}
+
+/* ── DESKTOP PANEL ── */
+#panel{width:148px;display:flex;flex-direction:column;gap:12px}
+.box{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:10px 12px;transition:background .3s,border-color .3s}
+.lbl{font-size:10px;color:var(--text4);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px}
+.val{font-size:26px;color:var(--text);text-shadow:0 0 10px var(--accent-text-glow);transition:color .3s}
+#nextCanvas{display:block;margin:0 auto}
+.keys{font-size:11px;line-height:2.1;color:var(--text3)}
+.keys b{color:var(--accent)}
+
+/* ── HELP BUTTON ── */
+#helpBtn{
+  width:36px;height:36px;border-radius:50%;border:1px solid var(--border);
+  background:var(--bg3);color:var(--accent);font-size:18px;font-weight:bold;
+  font-family:'Courier New',monospace;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .2s,border-color .3s,transform .15s;
+  flex-shrink:0;
+}
+#helpBtn:hover{transform:scale(1.1);background:var(--border)}
+#helpBtn:active{transform:scale(.95)}
+
+/* ── SHORTCUTS POPUP ── */
+#shortcutsBackdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;
+  display:none;align-items:center;justify-content:center;
+  backdrop-filter:blur(3px);
+}
+#shortcutsBackdrop.open{display:flex}
+#shortcutsPopup{
+  background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+  padding:20px 24px 18px;min-width:220px;max-width:320px;
+  box-shadow:0 12px 48px rgba(0,0,0,.5);position:relative;
+  animation:popIn .2s ease-out;
+}
+@keyframes popIn{from{opacity:0;transform:scale(.9) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+#shortcutsPopup .popup-title{
+  font-size:13px;color:var(--text);font-weight:bold;margin-bottom:12px;
+  letter-spacing:1px;text-transform:uppercase;
+}
+#shortcutsPopup .popup-close{
+  position:absolute;top:10px;right:14px;background:none;border:none;
+  color:var(--text3);font-size:20px;cursor:pointer;line-height:1;
+  transition:color .15s;
+}
+#shortcutsPopup .popup-close:hover{color:var(--accent)}
+
+/* ── GHOST TOGGLE (shared) ── */
+.gtoggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text3);margin-top:2px}
+.gtoggle:hover{color:var(--text2)}
+.sw{position:relative;width:32px;height:17px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0}
+.sl{position:absolute;inset:0;background:var(--sw-bg);border-radius:17px;transition:background .2s}
+.sl::before{
+  content:'';position:absolute;height:11px;width:11px;
+  left:3px;bottom:3px;background:var(--sw-knob);border-radius:50%;
+  transition:transform .2s,background .2s;
+}
+input:checked+.sl{background:var(--accent)}
+input:checked+.sl::before{transform:translateX(15px);background:#fff}
+
+/* ── MOBILE SCORE BAR (hidden on desktop) ── */
+#mobileBar{
+  display:none;
+  width:100%;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border2);
+  padding:6px 10px;
+  align-items:center;
+  justify-content:space-between;
+  gap:4px;
+  transition:background .3s,border-color .3s;
+}
+.mbc{display:flex;flex-direction:column;align-items:center;flex:1}
+.mbc .lbl{margin-bottom:1px}
+.mbc .val{font-size:20px}
+#mNextWrap{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}
+
+/* ── VIRTUAL CONTROLS (hidden on desktop) ── */
+#vControls{
+  display:none;
+  flex-direction:column;
+  width:100%;
+  gap:10px;
+  padding:10px 10px 18px;
+  background:var(--bg2);
+  border-top:1px solid var(--border3);
+  transition:background .3s,border-color .3s;
+}
+#vTop{display:flex;justify-content:space-between;align-items:center;padding:0 2px;gap:8px}
+#vToggles{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+#vMain{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#vDpadRow{display:flex;gap:8px}
+#vRight-cluster{display:flex;flex-direction:column;gap:8px;align-items:center}
+
+/* Virtual button base */
+.vbtn{
+  background:var(--vbtn-bg);
+  border:1px solid var(--vbtn-border);
+  border-bottom:3px solid var(--vbtn-border-b);
+  border-right:2px solid var(--vbtn-border-b);
+  color:var(--vbtn-color);
+  border-radius:10px;
+  cursor:pointer;
+  touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;
+  font-family:'Courier New',monospace;
+  transition:filter .08s,background .3s,border-color .3s,color .3s;
+  flex-shrink:0;
+}
+.vbtn.vactive{
+  background:var(--vbtn-active-bg);
+  border-bottom-width:1px;border-right-width:1px;
+  transform:translate(1px,2px);filter:brightness(.8);
+}
+.vbtn-md{
+  width:clamp(52px,17.5vw,70px);
+  height:clamp(50px,16vw,64px);
+  font-size:clamp(18px,5.5vw,24px);
+}
+.vbtn-drop{
+  background:var(--vbtn-drop-bg);
+  border-color:var(--vbtn-drop-border);border-bottom-color:var(--vbtn-drop-border-b);
+  color:var(--accent);
+}
+.vbtn-drop.vactive{background:var(--vbtn-drop-active)}
+.vbtn-sm{
+  padding:5px 14px;font-size:12px;color:var(--text5);
+  border-radius:8px;height:32px;border-bottom-width:2px;
+}
+.vlbl{font-size:9px;color:var(--text4);letter-spacing:.4px;line-height:1}
+
+/* ── MOBILE MEDIA QUERY ── */
+@media(max-width:560px){
+  body{
+    min-height:unset;
+    height:100dvh;
+    overflow:hidden;
+    justify-content:flex-start;
+    background:var(--bg2);
+  }
+  #mobileBar{display:flex;flex-shrink:0}
+  #wrapper{flex-direction:column;align-items:stretch;gap:0}
+  #panel{display:none}
+  #canvasWrap{overflow:hidden;position:relative} /* clips oversized canvas DOM */
+  #vControls{display:flex;flex-shrink:0}         /* never shrink below content */
+}
+</style>
+</head>
+<body>
+
+<!-- Mobile score bar -->
+<div id="mobileBar">
+  <div class="mbc"><div class="lbl">得分</div><div class="val" id="mScore">0</div></div>
+  <div class="mbc"><div class="lbl">等级</div><div class="val" id="mLevel">1</div></div>
+  <div class="mbc"><div class="lbl">行数</div><div class="val" id="mLines">0</div></div>
+  <div id="mNextWrap"><div class="lbl">下一个</div><canvas id="mNextCanvas" width="56" height="40"></canvas></div>
+</div>
+
+<!-- Main area -->
+<div id="wrapper">
+  <div id="canvasWrap">
+    <canvas id="gameCanvas" width="300" height="600"></canvas>
+    <div id="overlay">
+      <h1 id="oTitle">俄罗斯方块</h1>
+      <p id="oMsg">按 <b>N</b> 开始游戏</p>
+    </div>
+    <div id="restartBar"><div class="fill"></div></div>
+    <div id="restartHint">松开重新开始</div>
+  </div>
+  <div id="panel">
+    <div class="box">
+      <div class="lbl">下一个</div>
+      <canvas id="nextCanvas" width="124" height="84"></canvas>
+    </div>
+    <div class="box"><div class="lbl">得分</div><div class="val" id="sScore">0</div></div>
+    <div class="box"><div class="lbl">等级</div><div class="val" id="sLevel">1</div></div>
+    <div class="box"><div class="lbl">行数</div><div class="val" id="sLines">0</div></div>
+    <div class="box">
+      <div class="lbl">设置</div>
+      <label class="gtoggle">
+        <div class="sw"><input type="checkbox" class="ghostCk"><span class="sl"></span></div>
+        幽灵预览块
+      </label>
+      <label class="gtoggle" style="margin-top:7px">
+        <div class="sw"><input type="checkbox" class="miniCk"><span class="sl"></span></div>
+        迷你模式
+      </label>
+      <label class="gtoggle" style="margin-top:7px">
+        <div class="sw"><input type="checkbox" class="themeCk"><span class="sl"></span></div>
+        浅色主题
+      </label>
+    </div>
+    <button id="helpBtn" title="快捷键提示">?</button>
+  </div>
+</div>
+
+<!-- Shortcuts popup -->
+<div id="shortcutsBackdrop">
+  <div id="shortcutsPopup">
+    <div class="popup-title">快捷键</div>
+    <button class="popup-close">&times;</button>
+    <div class="keys">
+      <b>A</b> 左移<br><b>D</b> 右移<br><b>S</b> 下移<br>
+      <b>J</b> 旋转<br><b>空格</b> 硬降<br><b>N</b> 开始/暂停<br><b>长按N</b> 重新开始
+    </div>
+  </div>
+</div>
+
+<!-- Virtual controls (mobile) -->
+<div id="vControls">
+  <div id="vTop">
+    <button class="vbtn vbtn-sm" id="vPauseBtn">⏸ 暂停 (N)</button>
+    <div id="vToggles">
+      <label class="gtoggle">
+        <div class="sw"><input type="checkbox" class="ghostCk"><span class="sl"></span></div>
+        幽灵块
+      </label>
+      <label class="gtoggle">
+        <div class="sw"><input type="checkbox" class="miniCk"><span class="sl"></span></div>
+        迷你模式
+      </label>
+      <label class="gtoggle">
+        <div class="sw"><input type="checkbox" class="themeCk"><span class="sl"></span></div>
+        浅色
+      </label>
+    </div>
+  </div>
+  <div id="vMain">
+    <!-- Left: direction only -->
+    <div id="vDpadRow">
+      <button class="vbtn vbtn-md" id="vMoveL">←<div class="vlbl">左</div></button>
+      <button class="vbtn vbtn-md" id="vMoveD">↓<div class="vlbl">下</div></button>
+      <button class="vbtn vbtn-md" id="vMoveR">→<div class="vlbl">右</div></button>
+    </div>
+    <!-- Right: rotate + hard drop -->
+    <div id="vRight-cluster">
+      <button class="vbtn vbtn-md" id="vRotate">↻<div class="vlbl">旋转</div></button>
+      <button class="vbtn vbtn-md vbtn-drop" id="vDrop">⬇<div class="vlbl">硬降</div></button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── CONSTANTS (mutable for mini mode) ── */
+let COLS=10, ROWS=20, BS=30;
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+const nCvs=document.getElementById('nextCanvas');
+const nCtx=nCvs.getContext('2d');
+const mnCvs=document.getElementById('mNextCanvas');
+const mnCtx=mnCvs.getContext('2d');
+const overlay=document.getElementById('overlay');
+const oTitle=document.getElementById('oTitle');
+const oMsg=document.getElementById('oMsg');
+const canvasWrap=document.getElementById('canvasWrap');
+
+/* ── PIECE DEFS ── */
+const DEFS={
+  I:{cells:[[1,1,1,1]],         rgb:[41,128,185]},
+  J:{cells:[[1,0,0],[1,1,1]],   rgb:[44,62,80]},
+  L:{cells:[[0,0,1],[1,1,1]],   rgb:[202,111,30]},
+  O:{cells:[[1,1],[1,1]],       rgb:[200,165,20]},
+  S:{cells:[[0,1,1],[1,1,0]],   rgb:[30,140,73]},
+  T:{cells:[[0,1,0],[1,1,1]],   rgb:[130,60,155]},
+  Z:{cells:[[1,1,0],[0,1,1]],   rgb:[192,57,43]},
+};
+const TYPES=Object.keys(DEFS);
+
+/* ── STATE ── */
+let board, colorMap;
+let state='idle'; // idle|playing|paused|clearing|gameover
+let cur=null, nxt=null;
+let showGhost=false;
+let miniMode=false;
+let score=0, totalLines=0, level=1;
+let dropTimer=0, lastT=0;
+let particles=[];
+let clearInfo=null;
+
+function initBoard(){
+  board=Array.from({length:ROWS},()=>new Array(COLS).fill(0));
+  colorMap=Array.from({length:ROWS},()=>new Array(COLS).fill(null));
+}
+
+function applyMiniMode(on){
+  miniMode=on;
+  COLS=on?20:10; ROWS=on?40:20; BS=on?15:30;
+}
+
+// Call when toggle changes (resets game to idle)
+function onMiniToggle(on){
+  if(state==='playing'||state==='clearing'){
+    // Revert — can't change during play
+    document.querySelectorAll('.miniCk').forEach(c=>c.checked=miniMode);
+    return;
+  }
+  applyMiniMode(on);
+  document.querySelectorAll('.miniCk').forEach(c=>c.checked=miniMode);
+  initBoard();
+  particles=[];clearInfo=null;cur=null;nxt=null;dropTimer=0;
+  state='idle';
+  oTitle.textContent='俄罗斯方块';
+  oMsg.innerHTML=miniMode?'迷你模式 · 按 <b>N</b> 开始':'按 <b>N</b> 开始游戏';
+  overlay.style.display='flex';
+}
+
+/* ── PIECE HELPERS ── */
+function mkPiece(type){
+  const d=DEFS[type];
+  return{type,cells:d.cells.map(r=>[...r]),rgb:[...d.rgb],
+         x:Math.floor((COLS-d.cells[0].length)/2),y:0};
+}
+function randType(){return TYPES[Math.floor(Math.random()*TYPES.length)];}
+function rotate(cells){
+  const R=cells.length,C=cells[0].length;
+  const out=Array.from({length:C},()=>new Array(R).fill(0));
+  for(let r=0;r<R;r++)for(let c=0;c<C;c++)out[c][R-1-r]=cells[r][c];
+  return out;
+}
+function valid(cells,x,y){
+  for(let r=0;r<cells.length;r++)for(let c=0;c<cells[r].length;c++){
+    if(cells[r][c]){
+      const nx=x+c,ny=y+r;
+      if(nx<0||nx>=COLS||ny>=ROWS)return false;
+      if(ny>=0&&board[ny][nx])return false;
+    }
+  }
+  return true;
+}
+
+/* ── SCORE UI ── */
+function updateScoreUI(){
+  ['sScore','mScore'].forEach(id=>document.getElementById(id).textContent=score);
+  ['sLevel','mLevel'].forEach(id=>document.getElementById(id).textContent=level);
+  ['sLines','mLines'].forEach(id=>document.getElementById(id).textContent=totalLines);
+}
+
+/* ── LOCK & CLEAR ── */
+function lockPiece(){
+  let topOut=false;
+  for(let r=0;r<cur.cells.length;r++)for(let c=0;c<cur.cells[r].length;c++){
+    if(cur.cells[r][c]){
+      const ny=cur.y+r,nx=cur.x+c;
+      if(ny<0){topOut=true;continue;}
+      board[ny][nx]=1;
+      colorMap[ny][nx]=[...cur.rgb];
+    }
+  }
+  if(topOut){doGameOver();return;}
+  const full=[];
+  for(let r=0;r<ROWS;r++)if(board[r].every(v=>v))full.push(r);
+  if(full.length)startClear(full);
+  else spawnPiece();
+}
+
+function startClear(rows){
+  state='clearing';
+  rows.forEach(row=>{
+    for(let c=0;c<COLS;c++){
+      spawnParticles(c*BS+BS/2,row*BS+BS/2,colorMap[row][c]||[150,100,80],10);
+    }
+  });
+  const snapBoard=board.map(r=>[...r]);
+  const snapColors=colorMap.map(r=>r.map(c=>c?[...c]:null));
+  const clearedSet=new Set(rows);
+  const fallCells=[];
+  for(let r=0;r<ROWS;r++){
+    if(clearedSet.has(r))continue;
+    const nb=rows.filter(cr=>cr>r).length;
+    if(nb>0){
+      for(let c=0;c<COLS;c++){
+        if(snapBoard[r][c]&&snapColors[r][c]){
+          fallCells.push({x:c*BS,fromY:r*BS,toY:(r+nb)*BS,
+                          col:c,finalRow:r+nb,rgb:[...snapColors[r][c]]});
+        }
+      }
+    }
+  }
+  clearInfo={phase:'shatter',elapsed:0,rows,snapBoard,snapColors,fallCells,
+             SHATTER_DUR:430,FALL_DUR:380};
+}
+
+function applyLineRemoval(rows){
+  [...rows].sort((a,b)=>b-a).forEach(r=>{
+    board.splice(r,1);board.unshift(new Array(COLS).fill(0));
+    colorMap.splice(r,1);colorMap.unshift(new Array(COLS).fill(null));
+  });
+}
+
+function finalizeClear(){
+  const n=clearInfo.rows.length;
+  score+=([0,100,300,500,800][n]||800)*level;
+  totalLines+=n;
+  level=Math.floor(totalLines/10)+1;
+  updateScoreUI();
+  clearInfo=null;state='playing';
+  spawnPiece();
+}
+
+/* ── SPAWN / GAME FLOW ── */
+function spawnPiece(){
+  cur=nxt||mkPiece(randType());
+  nxt=mkPiece(randType());
+  if(!valid(cur.cells,cur.x,cur.y)){
+    cur.y=-1;
+    if(!valid(cur.cells,cur.x,cur.y)){doGameOver();return;}
+  }
+  drawNext();
+}
+
+function doGameOver(){
+  state='gameover';
+  oTitle.textContent='游戏结束';
+  oMsg.innerHTML=`得分: <b>${score}</b><br>按 <b>N</b> 重新开始<br><span style="font-size:12px;color:var(--text3)">长按 <b>N</b> 也可重启</span>`;
+  overlay.style.display='flex';
+}
+
+function startGame(){
+  initBoard();
+  score=0;totalLines=0;level=1;
+  updateScoreUI();
+  particles=[];clearInfo=null;dropTimer=0;cur=null;nxt=null;
+  state='playing';
+  overlay.style.display='none';
+  spawnPiece();
+}
+
+function togglePause(){
+  if(state==='playing'){
+    state='paused';
+    oTitle.textContent='已暂停';
+    oMsg.innerHTML='按 <b>N</b> 继续<br><span style="font-size:12px;color:var(--text3)">长按 <b>N</b> 重新开始</span>';
+    overlay.style.display='flex';
+  } else if(state==='paused'){
+    state='playing';
+    overlay.style.display='none';
+    lastT=performance.now();
+  }
+}
+
+// Mini mode: interval halved so visual fall speed stays similar over 2× more rows
+function dropInterval(){const b=Math.max(80,800-(level-1)*70);return miniMode?b/2:b;}
+
+/* ── PARTICLES ── */
+function spawnParticles(cx,cy,rgb,n){
+  // Scale particle size and count with block size
+  const szMin=BS*0.1, szRng=BS*0.18;
+  const cnt=miniMode?Math.ceil(n*.6):n; // fewer particles in mini mode
+  for(let i=0;i<cnt;i++){
+    const a=Math.random()*Math.PI*2,spd=1+Math.random()*4;
+    particles.push({x:cx,y:cy,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd-.6,
+                    sz:szMin+Math.random()*szRng,rgb:[...rgb],alpha:1,
+                    rot:Math.random()*Math.PI*2,rotV:(Math.random()-.5)*.45,
+                    decay:.022+Math.random()*.028});
+  }
+}
+function tickParticles(){
+  particles=particles.filter(p=>p.alpha>0.01);
+  particles.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.28;p.vx*=0.97;
+    p.rot+=p.rotV;p.alpha-=p.decay;p.sz*=0.985;
+  });
+}
+
+/* ── DRAW: BRICK ── */
+function drawBrick(c,x,y,sz,rgb,alpha=1){
+  if(alpha<=0)return;
+  c.save();c.globalAlpha=alpha;
+  const [r,g,b]=rgb;
+  const cl=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  const gr=c.createLinearGradient(x,y,x+sz,y+sz);
+  gr.addColorStop(0, `rgb(${cl(r+60,0,255)},${cl(g+60,0,255)},${cl(b+60,0,255)})`);
+  gr.addColorStop(.45,`rgb(${r},${g},${b})`);
+  gr.addColorStop(1, `rgb(${cl(r-55,0,255)},${cl(g-55,0,255)},${cl(b-55,0,255)})`);
+  c.fillStyle=gr;c.fillRect(x,y,sz,sz);
+  const mw=sz>=20?1.5:0.8; // mortar line width scales with block size
+  c.strokeStyle=`rgba(${cl(r-70,0,255)},${cl(g-70,0,255)},${cl(b-70,0,255)},0.7)`;
+  c.lineWidth=mw;
+  const mg=Math.max(1,sz*.05); // mortar gap from edge
+  c.beginPath();c.moveTo(x+mg,y+sz*.5);c.lineTo(x+sz-mg,y+sz*.5);c.stroke();
+  const row=Math.floor(y/30); // use fixed 30 so pattern is stable across modes
+  if((row&1)===0){
+    c.beginPath();c.moveTo(x+sz*.33,y+mg);c.lineTo(x+sz*.33,y+sz*.5-mg*.5);c.stroke();
+    c.beginPath();c.moveTo(x+sz*.67,y+sz*.5+mg*.5);c.lineTo(x+sz*.67,y+sz-mg);c.stroke();
+  }else{
+    c.beginPath();c.moveTo(x+sz*.33,y+sz*.5+mg*.5);c.lineTo(x+sz*.33,y+sz-mg);c.stroke();
+    c.beginPath();c.moveTo(x+sz*.67,y+mg);c.lineTo(x+sz*.67,y+sz*.5-mg*.5);c.stroke();
+  }
+  const bv=sz>=20?2.5:1.5; // bevel thickness
+  c.fillStyle='rgba(255,255,255,.38)';c.fillRect(x,y,sz,bv);c.fillRect(x,y,bv,sz);
+  c.fillStyle='rgba(0,0,0,.45)';c.fillRect(x,y+sz-bv,sz,bv);c.fillRect(x+sz-bv,y,bv,sz);
+  // Surface imperfection dots — only drawn on larger blocks (≥20px)
+  if(sz>=20){
+    const h=((x*31+y*17)*7)&0xFF;
+    c.fillStyle='rgba(0,0,0,.07)';
+    c.fillRect(x+3+(h*13%10),   y+3+(h*7%8),   4,2);
+    c.fillRect(x+8+(h*19%(sz-8)),y+14+(h*11%6), 3,2);
+    c.fillRect(x+14+(h*23%10),  y+6+(h*29%9),  4,3);
+  }
+  c.strokeStyle='rgba(0,0,0,.55)';c.lineWidth=.5;c.strokeRect(x+.5,y+.5,sz-1,sz-1);
+  c.restore();
+}
+
+/* ── DRAW: CRACKS ── */
+function drawCracks(c,x,y,sz,t){
+  c.save();c.globalAlpha=t*.85;
+  c.strokeStyle='rgba(0,0,0,.9)';c.lineWidth=1.3;
+  c.beginPath();
+  c.moveTo(x+sz*.12,y+sz*.08);c.lineTo(x+sz*.42,y+sz*.33);
+  c.lineTo(x+sz*.22,y+sz*.62);c.lineTo(x+sz*.48,y+sz*.92);
+  c.moveTo(x+sz*.58,y+sz*.12);c.lineTo(x+sz*.78,y+sz*.42);
+  c.lineTo(x+sz*.55,y+sz*.65);c.lineTo(x+sz*.82,y+sz*.88);
+  c.stroke();
+  c.strokeStyle='rgba(255,255,255,.2)';c.lineWidth=.6;
+  c.beginPath();
+  c.moveTo(x+sz*.11,y+sz*.07);c.lineTo(x+sz*.41,y+sz*.32);c.lineTo(x+sz*.21,y+sz*.61);
+  c.stroke();c.restore();
+}
+
+/* ── DRAW: BOARD ── */
+function drawBoard(){
+  const cs=getComputedStyle(document.documentElement);
+  const cvsBg=cs.getPropertyValue('--canvas-bg').trim();
+  const gridLn=cs.getPropertyValue('--grid-line').trim();
+  ctx.fillStyle=cvsBg;ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle=gridLn;ctx.lineWidth=.5;
+  for(let c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*BS,0);ctx.lineTo(c*BS,600);ctx.stroke();}
+  for(let r=0;r<=ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*BS);ctx.lineTo(300,r*BS);ctx.stroke();}
+
+  if(clearInfo&&clearInfo.phase==='shatter'){
+    const t=Math.min(1,clearInfo.elapsed/clearInfo.SHATTER_DUR);
+    const cs=new Set(clearInfo.rows);
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+      if(!clearInfo.snapBoard[r][c]||!clearInfo.snapColors[r][c])continue;
+      const rgb=clearInfo.snapColors[r][c];
+      if(cs.has(r)){
+        if(t<.2){const f=1-t/.2;ctx.save();ctx.globalAlpha=f*.5;ctx.fillStyle='#fff';ctx.fillRect(c*BS,r*BS,BS,BS);ctx.restore();}
+        drawBrick(ctx,c*BS,r*BS,BS,rgb,Math.max(0,1-t*1.6));
+        if(t>.15)drawCracks(ctx,c*BS,r*BS,BS,(t-.15)/.85);
+      }else{
+        drawBrick(ctx,c*BS,r*BS,BS,rgb);
+      }
+    }
+  } else if(clearInfo&&clearInfo.phase==='fall'){
+    const t=Math.min(1,clearInfo.elapsed/clearInfo.FALL_DUR);
+    const ease=1-Math.pow(1-t,3);
+    const animSet=new Set(clearInfo.fallCells.map(fc=>`${fc.col}_${fc.finalRow}`));
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+      if(!board[r][c]||!colorMap[r][c])continue;
+      if(animSet.has(`${c}_${r}`))continue;
+      drawBrick(ctx,c*BS,r*BS,BS,colorMap[r][c]);
+    }
+    clearInfo.fallCells.forEach(fc=>{
+      drawBrick(ctx,fc.x,fc.fromY+(fc.toY-fc.fromY)*ease,BS,fc.rgb);
+    });
+  } else {
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+      if(board[r][c]&&colorMap[r][c])drawBrick(ctx,c*BS,r*BS,BS,colorMap[r][c]);
+    }
+  }
+}
+
+/* ── DRAW: PIECE ── */
+function drawPiece(){
+  if(!cur||state==='clearing')return;
+  if(showGhost){
+    let gy=cur.y;
+    while(valid(cur.cells,cur.x,gy+1))gy++;
+    const ga=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ghost-alpha'))||0.16;
+    if(gy!==cur.y){
+      for(let r=0;r<cur.cells.length;r++)for(let c=0;c<cur.cells[r].length;c++){
+        if(cur.cells[r][c]){
+          ctx.save();ctx.globalAlpha=ga;
+          ctx.fillStyle=`rgb(${cur.rgb.join(',')})`;
+          ctx.fillRect((cur.x+c)*BS+1,(gy+r)*BS+1,BS-2,BS-2);
+          ctx.strokeStyle=`rgb(${cur.rgb.join(',')})`;
+          ctx.lineWidth=1;ctx.strokeRect((cur.x+c)*BS+1,(gy+r)*BS+1,BS-2,BS-2);
+          ctx.restore();
+        }
+      }
+    }
+  }
+  for(let r=0;r<cur.cells.length;r++)for(let c=0;c<cur.cells[r].length;c++){
+    if(cur.cells[r][c])drawBrick(ctx,(cur.x+c)*BS,(cur.y+r)*BS,BS,cur.rgb);
+  }
+}
+
+/* ── DRAW: NEXT ── */
+function renderNextTo(c2,cvs,bs){
+  const cvsBg=getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim();
+  c2.fillStyle=cvsBg;c2.fillRect(0,0,cvs.width,cvs.height);
+  if(!nxt)return;
+  const s=nxt.cells;
+  const ox=Math.floor((cvs.width-s[0].length*bs)/2);
+  const oy=Math.floor((cvs.height-s.length*bs)/2);
+  for(let r=0;r<s.length;r++)for(let c=0;c<s[r].length;c++){
+    if(s[r][c])drawBrick(c2,ox+c*bs,oy+r*bs,bs,nxt.rgb);
+  }
+}
+function drawNext(){renderNextTo(nCtx,nCvs,22);renderNextTo(mnCtx,mnCvs,14);}
+
+/* ── DRAW: PARTICLES ── */
+function drawParticles(){
+  particles.forEach(p=>{
+    ctx.save();ctx.globalAlpha=p.alpha;
+    ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+    const [r,g,b]=p.rgb;
+    const cl=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+    ctx.fillStyle=`rgb(${r},${g},${b})`;ctx.fillRect(-p.sz/2,-p.sz/2,p.sz,p.sz*.65);
+    ctx.fillStyle=`rgb(${cl(r-55,0,255)},${cl(g-55,0,255)},${cl(b-55,0,255)})`;
+    ctx.fillRect(-p.sz/2,p.sz*.1,p.sz,p.sz*.3);
+    ctx.fillStyle='rgba(255,255,255,.3)';ctx.fillRect(-p.sz/2,-p.sz/2,p.sz,2);
+    ctx.restore();
+  });
+}
+
+/* ── GAME LOOP ── */
+function loop(ts){
+  const dt=Math.min(ts-lastT,50);lastT=ts;
+  if(state==='playing'){
+    dropTimer+=dt;
+    if(dropTimer>=dropInterval()){
+      dropTimer=0;
+      if(valid(cur.cells,cur.x,cur.y+1))cur.y++;
+      else lockPiece();
+    }
+  }
+  if(state==='clearing'&&clearInfo){
+    clearInfo.elapsed+=dt;
+    if(clearInfo.phase==='shatter'&&clearInfo.elapsed>=clearInfo.SHATTER_DUR){
+      applyLineRemoval(clearInfo.rows);
+      clearInfo.phase='fall';clearInfo.elapsed=0;
+    }
+    if(clearInfo.phase==='fall'&&clearInfo.elapsed>=clearInfo.FALL_DUR){
+      finalizeClear();
+    }
+  }
+  tickParticles();
+  drawBoard();drawPiece();drawParticles();
+  requestAnimationFrame(loop);
+}
+
+/* ── KEY HANDLER (shared by keyboard & virtual buttons) ── */
+function handleKey(key){
+  if(state!=='playing')return;
+  switch(key){
+    case'a':if(valid(cur.cells,cur.x-1,cur.y))cur.x--;break;
+    case'd':if(valid(cur.cells,cur.x+1,cur.y))cur.x++;break;
+    case's':if(valid(cur.cells,cur.x,cur.y+1)){cur.y++;dropTimer=0;}else lockPiece();break;
+    case'j':{
+      const rot=rotate(cur.cells);
+      for(const dx of[0,-1,1,-2,2])if(valid(rot,cur.x+dx,cur.y)){cur.cells=rot;cur.x+=dx;break;}
+      break;
+    }
+    case' ':while(valid(cur.cells,cur.x,cur.y+1))cur.y++;lockPiece();dropTimer=0;break;
+  }
+}
+
+/* ── LONG-PRESS N RESTART ── */
+const RESTART_HOLD=2000; // ms to hold N for restart
+let nDownTime=0, nHoldTimer=null, nDidRestart=false, nStartedFromIdle=false;
+const restartFill=document.querySelector('#restartBar .fill');
+const restartHint=document.getElementById('restartHint');
+let nAnimFrame=null;
+
+function startNHold(){
+  nDownTime=performance.now();
+  nDidRestart=false;
+  // Animate the progress bar
+  const tick=()=>{
+    const elapsed=performance.now()-nDownTime;
+    const pct=Math.min(100,elapsed/RESTART_HOLD*100);
+    restartFill.style.width=pct+'%';
+    if(pct>=60&&!restartHint.classList.contains('show'))restartHint.classList.add('show');
+    if(elapsed<RESTART_HOLD)nAnimFrame=requestAnimationFrame(tick);
+  };
+  nAnimFrame=requestAnimationFrame(tick);
+  nHoldTimer=setTimeout(()=>{
+    nDidRestart=true;
+    restartFill.style.width='100%';
+    restartHint.classList.remove('show');
+    vibrate(30);
+    startGame();
+    cancelNHold();
+  },RESTART_HOLD);
+}
+
+function cancelNHold(){
+  clearTimeout(nHoldTimer);nHoldTimer=null;
+  cancelAnimationFrame(nAnimFrame);
+  restartFill.style.width='0%';
+  restartHint.classList.remove('show');
+}
+
+/* ── KEYBOARD INPUT ── */
+document.addEventListener('keydown',e=>{
+  if(e.key.toLowerCase()==='n'){
+    if(e.repeat)return; // ignore OS key-repeat
+    // In playing or paused state: start long-press detection
+    if(state==='playing'||state==='paused'||state==='clearing'){
+      startNHold();
+    } else {
+      // idle or gameover: just start immediately
+      startGame();
+      nStartedFromIdle=true;
+    }
+    return;
+  }
+  if(e.code==='Space'){e.preventDefault();handleKey(' ');return;}
+  handleKey(e.key.toLowerCase());
+});
+document.addEventListener('keyup',e=>{
+  if(e.key.toLowerCase()==='n'){
+    cancelNHold();
+    // If we didn't restart via long-press, treat as short press (toggle pause)
+    if(nStartedFromIdle){nStartedFromIdle=false;return;}
+    if(!nDidRestart&&(state==='playing'||state==='paused')){
+      togglePause();
+    }
+  }
+});
+
+/* ── VIBRATION ── */
+function vibrate(ms=25){
+  try{
+    if(navigator.vibrate){navigator.vibrate(ms);return;}
+  }catch(e){}
+}
+
+/* ── VIRTUAL BUTTONS ── */
+const REPEAT_DELAY=175, REPEAT_RATE=65;
+let vRD=null, vRR=null;
+
+function vRepeatStart(key){
+  handleKey(key);
+  vRD=setTimeout(()=>{vRR=setInterval(()=>{handleKey(key);vibrate(15);},REPEAT_RATE);},REPEAT_DELAY);
+}
+function vRepeatStop(){clearTimeout(vRD);clearInterval(vRR);vRD=vRR=null;}
+
+// Global release handler (catches lifts outside the button)
+document.addEventListener('pointerup',  vRepeatStop);
+document.addEventListener('pointercancel',vRepeatStop);
+
+function bindVBtn(el,key,repeat){
+  el.addEventListener('pointerdown',e=>{
+    vibrate(25);
+    e.preventDefault();
+    el.classList.add('vactive');
+    if(repeat)vRepeatStart(key);else handleKey(key);
+  });
+  const release=()=>el.classList.remove('vactive');
+  el.addEventListener('pointerup',    release);
+  el.addEventListener('pointercancel',release);
+  el.addEventListener('pointerleave', release);
+}
+
+bindVBtn(document.getElementById('vMoveL'), 'a', true);
+bindVBtn(document.getElementById('vMoveD'), 's', true);
+bindVBtn(document.getElementById('vMoveR'), 'd', true);
+bindVBtn(document.getElementById('vRotate'),'j', false);
+bindVBtn(document.getElementById('vDrop'),  ' ', false);
+
+// Mobile pause button: short tap = pause/start, long press = restart
+let vPauseDown=0, vPauseTimer=null, vPauseRestarted=false, vPauseAnimFrame=null;
+const vPauseBtn=document.getElementById('vPauseBtn');
+vPauseBtn.addEventListener('pointerdown',e=>{
+  vibrate(25);
+  e.preventDefault();
+  if(state==='idle'||state==='gameover'){
+    // Game starts on pointerup, not here
+    return;
+  }
+  // Start long-press detection for restart
+  vPauseDown=performance.now();vPauseRestarted=false;
+  const tick=()=>{
+    const elapsed=performance.now()-vPauseDown;
+    const pct=Math.min(100,elapsed/RESTART_HOLD*100);
+    restartFill.style.width=pct+'%';
+    if(pct>=60&&!restartHint.classList.contains('show'))restartHint.classList.add('show');
+    if(elapsed<RESTART_HOLD)vPauseAnimFrame=requestAnimationFrame(tick);
+  };
+  vPauseAnimFrame=requestAnimationFrame(tick);
+  vPauseTimer=setTimeout(()=>{
+    vPauseRestarted=true;
+    restartFill.style.width='100%';
+    restartHint.classList.remove('show');
+    vibrate(30);
+    startGame();
+    cancelVPause();
+  },RESTART_HOLD);
+});
+function cancelVPause(){
+  clearTimeout(vPauseTimer);vPauseTimer=null;
+  cancelAnimationFrame(vPauseAnimFrame);
+  restartFill.style.width='0%';
+  restartHint.classList.remove('show');
+}
+vPauseBtn.addEventListener('pointerup',()=>{
+  cancelVPause();
+  if(state==='idle'||state==='gameover'){
+    startGame();
+    return;
+  }
+  if(!vPauseRestarted)togglePause();
+});
+vPauseBtn.addEventListener('pointercancel',()=>cancelVPause());
+vPauseBtn.addEventListener('pointerleave',()=>cancelVPause());
+
+// Prevent page scroll when swiping over controls
+document.getElementById('vControls').addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+
+/* ── GHOST TOGGLE SYNC ── */
+document.querySelectorAll('.ghostCk').forEach(ck=>{
+  ck.addEventListener('change',e=>{
+    showGhost=e.target.checked;
+    document.querySelectorAll('.ghostCk').forEach(c=>c.checked=showGhost);
+  });
+});
+
+/* ── MINI MODE TOGGLE ── */
+document.querySelectorAll('.miniCk').forEach(ck=>{
+  ck.addEventListener('change',e=>onMiniToggle(e.target.checked));
+});
+
+/* ── THEME TOGGLE ── */
+let lightTheme=false;
+function setTheme(on){
+  lightTheme=on;
+  document.documentElement.setAttribute('data-theme',on?'light':'');
+  document.querySelectorAll('.themeCk').forEach(c=>c.checked=on);
+  drawNext(); // repaint next-piece canvases
+}
+document.querySelectorAll('.themeCk').forEach(ck=>{
+  ck.addEventListener('change',e=>setTheme(e.target.checked));
+});
+
+/* ── SHORTCUTS POPUP ── */
+const scBackdrop=document.getElementById('shortcutsBackdrop');
+document.getElementById('helpBtn').addEventListener('click',()=>{
+  scBackdrop.classList.add('open');
+});
+scBackdrop.addEventListener('click',e=>{
+  if(e.target===scBackdrop)scBackdrop.classList.remove('open');
+});
+scBackdrop.querySelector('.popup-close').addEventListener('click',()=>{
+  scBackdrop.classList.remove('open');
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')scBackdrop.classList.remove('open');
+},{capture:true});
+
+/* ── CANVAS RESCALE FOR MOBILE ── */
+function rescale(){
+  if(window.innerWidth>560){
+    // Reset any mobile overrides
+    canvas.style.position='';
+    canvas.style.left='';canvas.style.top='';
+    canvas.style.transform='';canvas.style.transformOrigin='';
+    canvasWrap.style.width='';canvasWrap.style.height='';
+    return;
+  }
+  // Measure fixed-height UI pieces
+  const mbarH=document.getElementById('mobileBar').getBoundingClientRect().height;
+  const vcH  =document.getElementById('vControls').getBoundingClientRect().height;
+  const availW=window.innerWidth;
+  const availH=window.innerHeight-mbarH-vcH;
+
+  // Scale to fit within the available rectangle (never larger than 1:1)
+  const scale=Math.min(availW/300, availH/600);
+  const dispW=300*scale, dispH=600*scale;
+
+  // Center canvas in the available space
+  const ox=Math.max(0,(availW-dispW)/2);
+  const oy=Math.max(0,(availH-dispH)/2);
+
+  canvasWrap.style.width =availW+'px';
+  canvasWrap.style.height=availH+'px';
+
+  // position:absolute takes canvas out of flow so canvasWrap height isn't distorted
+  canvas.style.position      ='absolute';
+  canvas.style.left          =ox+'px';
+  canvas.style.top           =oy+'px';
+  canvas.style.transformOrigin='0 0';
+  canvas.style.transform     =`scale(${scale})`;
+}
+window.addEventListener('resize',rescale);
+// Double rAF: first frame parses CSS, second frame has correct offsetHeights
+requestAnimationFrame(()=>requestAnimationFrame(rescale));
+
+/* ── INIT ── */
+initBoard();
+lastT=performance.now();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

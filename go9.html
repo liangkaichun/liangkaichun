@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>9 路围棋 · 人机对弈</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { overscroll-behavior: none; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #1e2430, #2d3444);
+    color: #e8e8e8;
+    min-height: 100vh;
+    padding: 16px;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  h1 { text-align: center; margin: 0 0 14px; font-weight: 500; letter-spacing: 2px; font-size: clamp(18px, 5vw, 26px); }
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: auto 320px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: 1fr; gap: 14px; }
+    body { padding: 10px; }
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  .controls button, .controls select {
+    background: #3a4256;
+    color: #fff;
+    border: 1px solid #566080;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background .2s;
+    -webkit-appearance: none;
+    appearance: none;
+    touch-action: manipulation;
+  }
+  .controls button:active { background: #4a5472; }
+  @media (hover: hover) { .controls button:hover { background: #4a5472; } }
+  .controls button:disabled { opacity: .4; cursor: not-allowed; }
+  .controls label { align-self: center; font-size: 14px; color: #b8c0d0; }
+  @media (max-width: 480px) {
+    .controls button, .controls select { padding: 7px 10px; font-size: 13px; }
+  }
+
+  .board-area { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  canvas {
+    background: #dcb377;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    cursor: pointer;
+    display: block;
+    touch-action: none;
+    max-width: 100%;
+    height: auto;
+  }
+  .hint {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #b8c0d0;
+    min-height: 20px;
+  }
+
+  .panel {
+    background: #2a3244;
+    border: 1px solid #3a4256;
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .panel h3 { margin: 0 0 12px; font-size: 15px; color: #9fb0d0; font-weight: 500; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+  .row span:last-child { color: #fff; font-weight: 500; }
+  .stone-dot {
+    display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+    vertical-align: middle; margin-right: 6px;
+  }
+  .black { background: radial-gradient(circle at 35% 30%, #666, #000); }
+  .white { background: radial-gradient(circle at 35% 30%, #fff, #bbb); border: 1px solid #888; }
+
+  .bar {
+    margin-top: 14px;
+    height: 22px;
+    border-radius: 11px;
+    overflow: hidden;
+    display: flex;
+    background: #555;
+    border: 1px solid #444;
+  }
+  .bar .b { background: linear-gradient(180deg, #333, #000); transition: width .3s; }
+  .bar .w { background: linear-gradient(180deg, #fff, #bbb); transition: width .3s; }
+  .bar .n { background: #777; transition: width .3s; }
+  .legend { display: flex; justify-content: space-between; font-size: 12px; color: #b8c0d0; margin-top: 6px; }
+  .diff {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 15px;
+    padding: 8px;
+    background: #1e2636;
+    border-radius: 6px;
+  }
+
+  .turn-indicator {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 14px;
+    padding: 6px;
+    background: #1e2636;
+    border-radius: 6px;
+  }
+
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 10;
+  }
+  .modal.show { display: flex; }
+  .modal-box {
+    background: #2a3244; padding: 28px 36px; border-radius: 12px;
+    text-align: center; border: 1px solid #566080;
+    max-width: 420px;
+  }
+  .modal-box h2 { margin: 0 0 12px; }
+  .modal-box p { margin: 6px 0; color: #c8d0e0; }
+  .modal-box button {
+    margin-top: 16px; padding: 8px 20px;
+    background: #4a5472; color: #fff; border: none;
+    border-radius: 6px; cursor: pointer; font-size: 14px;
+  }
+</style>
+</head>
+<body>
+  <h1>9 路围棋 · 人机对弈</h1>
+  <div class="controls">
+    <label>执子：</label>
+    <select id="colorSel">
+      <option value="1">黑（先手）</option>
+      <option value="2">白（后手）</option>
+    </select>
+    <label>贴目：7</label>
+    <button id="btnNew">新局</button>
+    <button id="btnPass">Pass</button>
+    <button id="btnUndo">悔棋</button>
+    <button id="btnScore">数子</button>
+    <button id="btnResign">认输</button>
+  </div>
+
+  <div class="wrap">
+    <div class="board-area">
+      <canvas id="board"></canvas>
+      <div class="hint" id="hint">黑方先行，请点击棋盘落子。</div>
+    </div>
+
+    <div class="panel">
+      <div class="turn-indicator" id="turnInfo">当前：黑方</div>
+      <h3>形势估算</h3>
+      <div class="row"><span><i class="stone-dot black"></i>黑子</span><span id="bStones">0</span></div>
+      <div class="row"><span><i class="stone-dot white"></i>白子</span><span id="wStones">0</span></div>
+      <div class="row"><span><i class="stone-dot black"></i>黑方领地</span><span id="bTerr">0</span></div>
+      <div class="row"><span><i class="stone-dot white"></i>白方领地</span><span id="wTerr">0</span></div>
+      <div class="row"><span>贴目（白）</span><span>7</span></div>
+      <div class="bar" id="bar">
+        <div class="b" style="width:50%"></div>
+        <div class="n" style="width:0%"></div>
+        <div class="w" style="width:50%"></div>
+      </div>
+      <div class="legend"><span>黑势</span><span>中立</span><span>白势</span></div>
+      <div class="diff" id="diffInfo">形势均衡</div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <h2 id="modalTitle">结果</h2>
+      <p id="modalBody"></p>
+      <button onclick="document.getElementById('modal').classList.remove('show')">关闭</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const N = 9;
+  const KOMI = 7;        // 白方贴目
+  const BLACK = 1, WHITE = 2;
+
+  // ========== 状态 ==========
+  let board = new Int8Array(N * N);
+  let ko = -1;
+  let turn = BLACK;
+  let humanColor = BLACK;
+  let lastMove = -1;
+  let passes = 0;
+  let gameOver = false;
+  let history = []; // {board, ko, turn, lastMove, passes}
+
+  // ========== 工具 ==========
+  const idxOf = (x, y) => y * N + x;
+  function neighbors(i) {
+    const x = i % N, y = (i / N) | 0;
+    const r = [];
+    if (x > 0) r.push(i - 1);
+    if (x < N - 1) r.push(i + 1);
+    if (y > 0) r.push(i - N);
+    if (y < N - 1) r.push(i + N);
+    return r;
+  }
+
+  // BFS 求棋块与气
+  function getGroup(b, start) {
+    const color = b[start];
+    if (color === 0) return { stones: [], liberties: 0, libSet: new Set() };
+    const visited = new Uint8Array(N * N);
+    const stack = [start]; visited[start] = 1;
+    const stones = [];
+    const libSet = new Set();
+    while (stack.length) {
+      const c = stack.pop(); stones.push(c);
+      for (const n of neighbors(c)) {
+        if (b[n] === 0) libSet.add(n);
+        else if (b[n] === color && !visited[n]) { visited[n] = 1; stack.push(n); }
+      }
+    }
+    return { stones, liberties: libSet.size, libSet };
+  }
+
+  // 尝试落子
+  function tryMove(b, color, i, koPt) {
+    if (i < 0 || i >= N * N) return { legal: false };
+    if (b[i] !== 0) return { legal: false, reason: '该点已有子' };
+    if (i === koPt) return { legal: false, reason: '劫，不能立即回提' };
+    const nb = Int8Array.from(b);
+    nb[i] = color;
+    const opp = 3 - color;
+    const captured = [];
+    for (const n of neighbors(i)) {
+      if (nb[n] === opp) {
+        const g = getGroup(nb, n);
+        if (g.liberties === 0) {
+          for (const s of g.stones) {
+            if (!captured.includes(s)) captured.push(s);
+          }
+        }
+      }
+    }
+    for (const s of captured) nb[s] = 0;
+    const self = getGroup(nb, i);
+    if (self.liberties === 0) return { legal: false, reason: '自杀禁着' };
+    let nextKo = -1;
+    if (captured.length === 1 && self.stones.length === 1 && self.liberties === 1) {
+      nextKo = captured[0];
+    }
+    return { legal: true, board: nb, ko: nextKo, captured };
+  }
+
+  // 领地估算
+  function estimateTerritory(b) {
+    const visited = new Uint8Array(N * N);
+    let bTerr = 0, wTerr = 0, neutral = 0;
+    for (let i = 0; i < N * N; i++) {
+      if (b[i] !== 0 || visited[i]) continue;
+      const stack = [i]; visited[i] = 1;
+      const region = [];
+      let touchB = false, touchW = false;
+      while (stack.length) {
+        const c = stack.pop(); region.push(c);
+        for (const n of neighbors(c)) {
+          if (b[n] === BLACK) touchB = true;
+          else if (b[n] === WHITE) touchW = true;
+          else if (!visited[n]) { visited[n] = 1; stack.push(n); }
+        }
+      }
+      if (touchB && !touchW) bTerr += region.length;
+      else if (touchW && !touchB) wTerr += region.length;
+      else neutral += region.length;
+    }
+    return { bTerr, wTerr, neutral };
+  }
+
+  function countStones(b) {
+    let bs = 0, ws = 0;
+    for (let i = 0; i < N * N; i++) {
+      if (b[i] === BLACK) bs++;
+      else if (b[i] === WHITE) ws++;
+    }
+    return { bs, ws };
+  }
+
+  // ========== AI 启发式 ==========
+  function aiMove(b, color, koPt) {
+    const opp = 3 - color;
+    let best = { score: -Infinity, idx: -1 };
+    for (let i = 0; i < N * N; i++) {
+      const t = tryMove(b, color, i, koPt);
+      if (!t.legal) continue;
+      let s = 0;
+
+      // 提子收益
+      s += t.captured.length * 12;
+
+      // 自身棋块气
+      const selfG = getGroup(t.board, i);
+      s += Math.min(selfG.liberties, 5) * 1.5;
+
+      // 紧贴已被逼近的己方棋块（救援）
+      for (const n of neighbors(i)) {
+        if (b[n] === color) {
+          const g = getGroup(b, n);
+          if (g.liberties === 1) s += 8; // 被打吃救援
+          else if (g.liberties === 2) s += 3;
+          s += 1.2; // 基础连接
+        }
+      }
+
+      // 攻击：减少对方气
+      for (const n of neighbors(i)) {
+        if (b[n] === opp) {
+          const gBefore = getGroup(b, n);
+          const gAfter = getGroup(t.board, n);
+          if (gAfter.liberties === 1) s += 6; // 打吃
+          s += Math.max(0, gBefore.liberties - gAfter.liberties) * 2.5;
+        }
+      }
+
+      // 位置价值（3、4线优先）
+      const x = i % N, y = (i / N) | 0;
+      const dx = Math.min(x, N - 1 - x), dy = Math.min(y, N - 1 - y);
+      const line = Math.min(dx, dy);
+      const lineBonus = [0, 0.8, 2.6, 3.2, 2.4][line] || 0;
+      s += lineBonus;
+
+      // 避免向自己眼里填子（邻居都是己方且不提子）
+      let ownAround = 0;
+      for (const n of neighbors(i)) if (b[n] === color) ownAround++;
+      const nbCount = neighbors(i).length;
+      if (ownAround === nbCount && t.captured.length === 0) s -= 15;
+
+      // 轻微随机扰动
+      s += Math.random() * 0.6;
+
+      if (s > best.score) best = { score: s, idx: i };
+    }
+    if (best.score < 0.5) return -1; // pass
+    return best.idx;
+  }
+
+  // ========== 渲染 ==========
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  let SIZE = 540;
+  let MARGIN = 34;
+  let CELL = (SIZE - MARGIN * 2) / (N - 1);
+
+  function computeSize() {
+    // 移动端及窄屏自适应：基于可用宽度
+    const boardArea = canvas.parentElement;
+    const availW = boardArea.clientWidth || window.innerWidth - 20;
+    // 同时不超过视口高度的 70%（给控制栏和面板留空间）
+    const availH = window.innerHeight - 180;
+    const s = Math.max(260, Math.min(540, availW, availH));
+    SIZE = Math.floor(s);
+    MARGIN = Math.max(20, Math.floor(SIZE * 0.063));
+    CELL = (SIZE - MARGIN * 2) / (N - 1);
+  }
+
+  function setupCanvas() {
+    computeSize();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = SIZE * dpr;
+    canvas.height = SIZE * dpr;
+    canvas.style.width = SIZE + 'px';
+    canvas.style.height = SIZE + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function drawBoard() {
+    // 木纹背景
+    const grad = ctx.createLinearGradient(0, 0, SIZE, SIZE);
+    grad.addColorStop(0, '#e6bd83');
+    grad.addColorStop(1, '#c99955');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, SIZE, SIZE);
+
+    // 网格
+    ctx.strokeStyle = '#3d2a10';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      ctx.moveTo(MARGIN, MARGIN + i * CELL);
+      ctx.lineTo(SIZE - MARGIN, MARGIN + i * CELL);
+      ctx.moveTo(MARGIN + i * CELL, MARGIN);
+      ctx.lineTo(MARGIN + i * CELL, SIZE - MARGIN);
+    }
+    ctx.stroke();
+
+    // 星位：9路常用 (2,2)(6,2)(4,4)(2,6)(6,6)
+    const stars = [[2,2],[6,2],[4,4],[2,6],[6,6]];
+    ctx.fillStyle = '#3d2a10';
+    const starR = Math.max(2.5, CELL * 0.09);
+    for (const [x, y] of stars) {
+      ctx.beginPath();
+      ctx.arc(MARGIN + x * CELL, MARGIN + y * CELL, starR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 坐标
+    ctx.fillStyle = '#5a3d18';
+    const fontPx = Math.max(10, Math.floor(MARGIN * 0.42));
+    ctx.font = fontPx + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const letters = 'ABCDEFGHJ';
+    const off = Math.max(8, MARGIN * 0.42);
+    for (let i = 0; i < N; i++) {
+      ctx.fillText(letters[i], MARGIN + i * CELL, off);
+      ctx.fillText(letters[i], MARGIN + i * CELL, SIZE - off);
+      ctx.fillText(String(N - i), off, MARGIN + i * CELL);
+      ctx.fillText(String(N - i), SIZE - off, MARGIN + i * CELL);
+    }
+
+    // 棋子
+    for (let i = 0; i < N * N; i++) {
+      if (board[i] === 0) continue;
+      const x = i % N, y = (i / N) | 0;
+      drawStone(MARGIN + x * CELL, MARGIN + y * CELL, board[i]);
+    }
+
+    // 最后一手标记
+    if (lastMove >= 0) {
+      const x = lastMove % N, y = (lastMove / N) | 0;
+      ctx.fillStyle = '#e04040';
+      ctx.beginPath();
+      ctx.arc(MARGIN + x * CELL, MARGIN + y * CELL, Math.max(3, CELL * 0.11), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawStone(cx, cy, color) {
+    const r = CELL * 0.46;
+    // 阴影
+    ctx.beginPath();
+    ctx.arc(cx + Math.max(1, r * 0.08), cy + Math.max(1, r * 0.08), r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fill();
+
+    const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
+    if (color === BLACK) {
+      g.addColorStop(0, '#666');
+      g.addColorStop(1, '#000');
+    } else {
+      g.addColorStop(0, '#fff');
+      g.addColorStop(1, '#aaa');
+    }
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+
+  function render() {
+    drawBoard();
+    updatePanel();
+    updateTurnInfo();
+  }
+
+  function updatePanel() {
+    const { bs, ws } = countStones(board);
+    const { bTerr, wTerr, neutral } = estimateTerritory(board);
+    document.getElementById('bStones').textContent = bs;
+    document.getElementById('wStones').textContent = ws;
+    document.getElementById('bTerr').textContent = bTerr;
+    document.getElementById('wTerr').textContent = wTerr;
+
+    const bScore = bs + bTerr;
+    const wScore = ws + wTerr + KOMI;
+    const total = bScore + wScore + neutral || 1;
+    const bPct = bScore / total * 100;
+    const wPct = wScore / total * 100;
+    const nPct = 100 - bPct - wPct;
+    const bar = document.getElementById('bar');
+    bar.children[0].style.width = bPct + '%';
+    bar.children[1].style.width = nPct + '%';
+    bar.children[2].style.width = wPct + '%';
+
+    const diff = bScore - wScore;
+    const diffEl = document.getElementById('diffInfo');
+    if (Math.abs(diff) < 0.5) diffEl.textContent = '形势均衡';
+    else if (diff > 0) diffEl.textContent = `黑方领先约 ${diff.toFixed(1)} 目`;
+    else diffEl.textContent = `白方领先约 ${(-diff).toFixed(1)} 目`;
+  }
+
+  function updateTurnInfo() {
+    const el = document.getElementById('turnInfo');
+    if (gameOver) { el.textContent = '对局已结束'; return; }
+    el.textContent = '当前：' + (turn === BLACK ? '黑方' : '白方') +
+      (turn === humanColor ? '（你）' : '（电脑）');
+  }
+
+  // ========== 交互 ==========
+  function hitTest(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    // CSS 像素缩放：canvas.style.width 可能不等于内部 SIZE（移动端缩放）
+    const sx = SIZE / rect.width;
+    const sy = SIZE / rect.height;
+    const px = (clientX - rect.left) * sx;
+    const py = (clientY - rect.top) * sy;
+    const x = Math.round((px - MARGIN) / CELL);
+    const y = Math.round((py - MARGIN) / CELL);
+    if (x < 0 || x >= N || y < 0 || y >= N) return -1;
+    const cx = MARGIN + x * CELL, cy = MARGIN + y * CELL;
+    if (Math.hypot(px - cx, py - cy) > CELL * 0.6) return -1;
+    return idxOf(x, y);
+  }
+
+  function pushHistory() {
+    history.push({
+      board: Int8Array.from(board),
+      ko, turn, lastMove, passes
+    });
+    if (history.length > 200) history.shift();
+  }
+
+  function applyMove(color, i) {
+    const t = tryMove(board, color, i, ko);
+    if (!t.legal) return { ok: false, reason: t.reason || '非法落子' };
+    pushHistory();
+    board = t.board;
+    ko = t.ko;
+    lastMove = i;
+    passes = 0;
+    turn = 3 - color;
+    return { ok: true, captured: t.captured.length };
+  }
+
+  function doPass(color) {
+    pushHistory();
+    lastMove = -1;
+    passes += 1;
+    turn = 3 - color;
+    if (passes >= 2) finishGame('双方 Pass，对局结束');
+  }
+
+  function handlePointer(clientX, clientY) {
+    if (gameOver) return;
+    if (turn !== humanColor) return;
+    const i = hitTest(clientX, clientY);
+    if (i < 0) return;
+    const r = applyMove(humanColor, i);
+    if (!r.ok) {
+      showHint(r.reason);
+      return;
+    }
+    showHint(r.captured ? `提 ${r.captured} 子` : '');
+    render();
+    if (!gameOver) setTimeout(aiTurn, 300);
+  }
+
+  // 移动端触摸：用 touchend 并阻止后续合成 click（防双触发）
+  let touched = false;
+  canvas.addEventListener('touchstart', (ev) => {
+    ev.preventDefault();
+  }, { passive: false });
+  canvas.addEventListener('touchend', (ev) => {
+    ev.preventDefault();
+    touched = true;
+    setTimeout(() => { touched = false; }, 400);
+    const t = ev.changedTouches[0];
+    if (t) handlePointer(t.clientX, t.clientY);
+  }, { passive: false });
+  canvas.addEventListener('click', (ev) => {
+    if (touched) return;
+    handlePointer(ev.clientX, ev.clientY);
+  });
+
+  function aiTurn() {
+    if (gameOver || turn === humanColor) return;
+    const aiColor = 3 - humanColor;
+    const mv = aiMove(board, aiColor, ko);
+    if (mv < 0) {
+      doPass(aiColor);
+      showHint('电脑 Pass');
+    } else {
+      const r = applyMove(aiColor, mv);
+      if (!r.ok) { doPass(aiColor); showHint('电脑 Pass'); }
+      else showHint(r.captured ? `电脑提 ${r.captured} 子` : '电脑已落子');
+    }
+    render();
+  }
+
+  function showHint(msg) {
+    document.getElementById('hint').textContent = msg || '';
+  }
+
+  function finishGame(reason, forcedLoser) {
+    gameOver = true;
+    const { bs, ws } = countStones(board);
+    const { bTerr, wTerr } = estimateTerritory(board);
+    const bScore = bs + bTerr;
+    const wScore = ws + wTerr + KOMI;
+    let winner, diff;
+    if (forcedLoser) {
+      winner = forcedLoser === BLACK ? '白方' : '黑方';
+      diff = null;
+    } else {
+      if (bScore > wScore) { winner = '黑方'; diff = bScore - wScore; }
+      else if (wScore > bScore) { winner = '白方'; diff = wScore - bScore; }
+      else { winner = '和棋'; diff = 0; }
+    }
+    document.getElementById('modalTitle').textContent = '对局结束';
+    const body = document.getElementById('modalBody');
+    let html = `<p>${reason}</p>`;
+    html += `<p>黑：${bs} 子 + ${bTerr} 目 = <b>${bScore.toFixed(1)}</b></p>`;
+    html += `<p>白：${ws} 子 + ${wTerr} 目 + 贴目 ${KOMI} = <b>${wScore.toFixed(1)}</b></p>`;
+    if (diff === null) html += `<p><b>${winner} 获胜（对方认输）</b></p>`;
+    else if (diff === 0) html += `<p><b>和棋</b></p>`;
+    else html += `<p><b>${winner} 胜 ${diff.toFixed(1)} 目</b></p>`;
+    body.innerHTML = html;
+    document.getElementById('modal').classList.add('show');
+    updateTurnInfo();
+  }
+
+  // ========== 按钮 ==========
+  document.getElementById('btnNew').addEventListener('click', newGame);
+  document.getElementById('btnPass').addEventListener('click', () => {
+    if (gameOver || turn !== humanColor) return;
+    doPass(humanColor);
+    showHint('你选择 Pass');
+    render();
+    if (!gameOver) setTimeout(aiTurn, 300);
+  });
+  document.getElementById('btnUndo').addEventListener('click', () => {
+    if (gameOver) return;
+    // 回退到上一次轮到人类的状态（通常两步）
+    let steps = 0;
+    while (history.length && steps < 2) {
+      const s = history.pop();
+      board = s.board;
+      ko = s.ko; turn = s.turn; lastMove = s.lastMove; passes = s.passes;
+      steps++;
+      if (turn === humanColor) break;
+    }
+    render();
+    showHint('已悔棋');
+  });
+  document.getElementById('btnScore').addEventListener('click', () => {
+    if (gameOver) return;
+    finishGame('用户申请数子');
+  });
+  document.getElementById('btnResign').addEventListener('click', () => {
+    if (gameOver) return;
+    finishGame('认输', humanColor);
+  });
+  document.getElementById('colorSel').addEventListener('change', newGame);
+
+  function newGame() {
+    board = new Int8Array(N * N);
+    ko = -1; turn = BLACK; lastMove = -1; passes = 0;
+    gameOver = false; history = [];
+    humanColor = parseInt(document.getElementById('colorSel').value, 10);
+    document.getElementById('modal').classList.remove('show');
+    showHint(humanColor === BLACK ? '你执黑先行，请落子。' : '你执白，电脑先行...');
+    render();
+    if (humanColor === WHITE) setTimeout(aiTurn, 400);
+  }
+
+  // ========== 启动 ==========
+  setupCanvas();
+  newGame();
+
+  // 窗口尺寸 / 方向变化：重算 canvas 并重绘
+  let resizeTimer = null;
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      setupCanvas();
+      render();
+    }, 120);
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+})();
+</script>
+</body>
+</html>

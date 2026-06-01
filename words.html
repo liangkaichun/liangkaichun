@@ -1,0 +1,3454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>间隔记忆英语单词</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .pronounce-help {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4facfe;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            border-radius: 15px;
+            padding: 80px 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 学习模式样式 */
+        .study-mode .header,
+        .study-mode .stats,
+        .study-mode .controls {
+            display: none !important;
+        }
+
+        .study-mode .main-content {
+            padding: 20px;
+        }
+
+        .study-mode .card {
+            margin-bottom: 20px;
+            height: calc(100vh - 160px);
+            border-radius: 20px;
+            position: relative;
+        }
+
+        /* 退出学习模式按钮 */
+        .exit-study-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.2em;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            display: none;
+        }
+
+        .exit-study-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .study-mode .exit-study-btn {
+            display: flex !important;
+        }
+
+        .word-display {
+            font-size: 6em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0px;
+        }
+
+        .word-display #wordText {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .word-display #wordText:hover {
+            color: #667eea;
+        }
+
+        .pronounce-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 0.85em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .pronounce-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .pronounce-btn:active {
+            transform: scale(0.95);
+        }
+
+        .meaning-display {
+            font-size: 3.3em;
+            color: #666;
+            margin-bottom: 30px;
+            min-height: 100px;
+        }
+
+        .sentence-display {
+            font-style: italic;
+            color: #888;
+            font-size: 2.25em;
+            margin-bottom: 25px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .sentence-display:hover {
+            color: #667eea;
+        }
+
+        .sentence-controls {
+            display: none;
+        }
+
+        .sentence-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-easy {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-good {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+
+        .btn-hard {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+
+        .btn-fail {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .import-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .import-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .file-input {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .file-input:hover {
+            background: rgba(0, 123, 255, 0.1);
+        }
+
+        .text-area {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            resize: vertical;
+            margin-bottom: 15px;
+            font-family: inherit;
+        }
+
+        .instructions {
+            background: #e9f5ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .progress-info {
+            margin: 25px 0;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .progress-text span {
+            font-weight: bold;
+            color: #4facfe;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            transition: width 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+
+            .container {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+                box-shadow: none;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .word-display {
+                font-size: 2.8em;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .meaning-display {
+                font-size: 2em;
+            }
+
+            .sentence-display {
+                font-size: 1.5em;
+            }
+
+            .main-content {
+                padding: 15px;
+            }
+
+            .card {
+                padding: 40px 15px;
+                min-height: 300px;
+            }
+
+            .study-mode .card {
+                height: calc(100vh - 80px);
+                padding: 30px 15px;
+            }
+
+            .button-group {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .btn {
+                padding: 12px 20px;
+                font-size: 1em;
+            }
+
+            .controls {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                padding: 15px;
+            }
+
+            .stat-card {
+                padding: 15px;
+            }
+
+            .stat-number {
+                font-size: 1.5em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 20px 15px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .word-display {
+                font-size: 2.24em;
+            }
+
+            .meaning-display {
+                font-size: 1.7em;
+            }
+
+            .sentence-display {
+                font-size: 1.3em;
+            }
+
+            .stat-number {
+                font-size: 1.3em;
+            }
+        }
+
+        /* 浮动提示样式 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            font-size: 1.1em;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: none;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        .toast.info {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+    </style>
+</head>
+<body>
+    <div id="toast" class="toast"></div>
+    <div class="container">
+        <button class="exit-study-btn" id="exitStudyBtn" onclick="exitStudyMode()">❌</button>
+        <div class="header">
+            <h1>🧠 间隔记忆英语单词</h1>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalWords">0</div>
+                <div class="stat-label">总单词数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="dueWords">0</div>
+                <div class="stat-label">今日需复习</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="masteredWords">0</div>
+                <div class="stat-label">已掌握</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="studyStreak">0</div>
+                <div class="stat-label">学习天数</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="card" id="studyCard">
+                <div class="word-display" id="wordDisplay">
+                    <span id="wordText">点击卡片开始学习</span>
+                </div>
+                <div class="meaning-display hidden" id="meaningDisplay"></div>
+                <div class="sentence-display hidden" id="sentenceDisplay">
+                    <div class="sentence-text" id="sentenceText"></div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-easy" id="btnEasy" onclick="rateWord(10)">✅ 轻松记住</button>
+                <button class="btn btn-good" id="btnGood" onclick="rateWord(5)">😊 记得不错</button>
+                <button class="btn btn-hard" id="btnHard" onclick="rateWord(2)">😅 有点难度</button>
+                <button class="btn btn-fail" id="btnFail" onclick="rateWord(0)">❌ 完全忘记</button>
+            </div>
+
+            <div class="progress-info">
+                <div class="progress-text">
+                    今日进度：<span id="progressText">0/0</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-secondary" id="btnImport" onclick="toggleImportSection()">📥 导入词库</button>
+                <button class="btn btn-secondary" id="btnAdd" onclick="addWord()">➕ 添加单词</button>
+                <button class="btn btn-secondary" onclick="exportWords()">📤 导出词库</button>
+                <button class="btn btn-secondary" id="btnReset" onclick="resetProgress()">🔄 重置进度</button>
+            </div>
+
+            <div class="import-section" id="importSection">
+                <h3>📥 导入词库</h3>
+                <div class="instructions">
+                    <strong>格式说明：</strong>每行一个单词，格式为 "单词 中文释义" 或 "单词 中文释义 | 例句"
+                    <br>示例：
+                    <br>apple 苹果 | I eat an apple every day.
+                    <br>banana 香蕉
+                </div>
+                <div class="file-input" onclick="document.getElementById('fileInput').click()">
+                    📂 点击上传文件或直接粘贴到下方
+                </div>
+                <input type="file" id="fileInput" accept=".txt" style="display: none;" onchange="handleFileUpload(event)">
+                <textarea class="text-area" id="importText" placeholder="请粘贴单词列表..."></textarea>
+                <button class="btn btn-primary" onclick="importWords()">✅ 导入单词</button>
+                <button class="btn btn-secondary" onclick="clearImportText()">🗑️ 清空内容</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 浮动提示函数
+        function showToast(message, type = 'info', duration = 3000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+
+            // 触发显示动画
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+
+            // 自动隐藏
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        // 本地存储键名
+        const STORAGE_KEY = 'vocabularyApp';
+        const STREAK_KEY = 'studyStreak';
+        const INITIALIZED_KEY = 'appInitialized';
+
+        // 初始化数据
+        let vocabulary = [];
+        let currentWordIndex = -1;
+        let todayReviewed = 0;
+        let currentWord = null;
+
+        // 中考单词初始数据
+        const INITIAL_VOCABULARY = [
+    {
+        "word": "motivate",
+        "meaning": "驱使，激发",
+        "sentence": "The coach gave a speech to motivate the team."
+    },
+    {
+        "word": "plastic",
+        "meaning": "塑料",
+        "sentence": "We should reduce the use of plastic bags."
+    },
+    {
+        "word": "positive",
+        "meaning": "积极的，肯定的",
+        "sentence": "Keep a positive attitude even when things are hard."
+    },
+    {
+        "word": "physical",
+        "meaning": "身体的，物理的",
+        "sentence": "Regular physical exercise is good for your health."
+    },
+    {
+        "word": "reduce",
+        "meaning": "减少，缩小",
+        "sentence": "We need to reduce our daily expenses."
+    },
+    {
+        "word": "performance",
+        "meaning": "表现，表演",
+        "sentence": "Her performance in the play was excellent."
+    },
+    {
+        "word": "emotional",
+        "meaning": "情感的，情绪的",
+        "sentence": "The movie was so emotional that I cried."
+    },
+    {
+        "word": "participant",
+        "meaning": "参加者",
+        "sentence": "Every participant received a small gift."
+    },
+    {
+        "word": "view",
+        "meaning": "风景，视野，见解；观看",
+        "sentence": "The hotel room has a beautiful ocean view."
+    },
+    {
+        "word": "cooperate",
+        "meaning": "合作，配合",
+        "sentence": "We must cooperate to finish the project on time."
+    },
+    {
+        "word": "negative",
+        "meaning": "负面的，消极的，否定的",
+        "sentence": "Don't focus on the negative comments."
+    },
+    {
+        "word": "pressure",
+        "meaning": "压力",
+        "sentence": "She works well under pressure."
+    },
+    {
+        "word": "failure",
+        "meaning": "失败",
+        "sentence": "Failure is often the first step to success."
+    },
+    {
+        "word": "garbage",
+        "meaning": "垃圾",
+        "sentence": "Please take out the garbage before you leave."
+    },
+    {
+        "word": "journal",
+        "meaning": "杂志，期刊，日志",
+        "sentence": "She writes in her journal every night."
+    },
+    {
+        "word": "device",
+        "meaning": "设备",
+        "sentence": "This electronic device tracks your steps."
+    },
+    {
+        "word": "literature",
+        "meaning": "文学，文学作品",
+        "sentence": "He is studying English literature at university."
+    },
+    {
+        "word": "bacteria",
+        "meaning": "细菌",
+        "sentence": "Washing hands kills harmful bacteria."
+    },
+    {
+        "word": "landfill",
+        "meaning": "垃圾填埋场",
+        "sentence": "Much of our waste ends up in a landfill."
+    },
+    {
+        "word": "personality",
+        "meaning": "性格，个性；特色，特征",
+        "sentence": "He has a very cheerful personality."
+    },
+    {
+        "word": "solution",
+        "meaning": "解决办法，答案",
+        "sentence": "We need to find a solution to this problem."
+    },
+    {
+        "word": "affect",
+        "meaning": "影响，感动，侵袭",
+        "sentence": "The weather can affect your mood."
+    },
+    {
+        "word": "average",
+        "meaning": "平均数，平均水平；平均的",
+        "sentence": "His height is above average."
+    },
+    {
+        "word": "comfort",
+        "meaning": "舒适，安慰",
+        "sentence": "The new sofa offers great comfort."
+    },
+    {
+        "word": "connection",
+        "meaning": "联系，连接",
+        "sentence": "The internet connection is very slow today."
+    },
+    {
+        "word": "quality",
+        "meaning": "质量，品质，性质",
+        "sentence": "They value quality over quantity."
+    },
+    {
+        "word": "violent",
+        "meaning": "猛烈的，暴力的",
+        "sentence": "I do not like watching violent movies."
+    },
+    {
+        "word": "generate",
+        "meaning": "产生，引起",
+        "sentence": "Solar panels generate electricity from the sun."
+    },
+    {
+        "word": "publish",
+        "meaning": "出版",
+        "sentence": "The author will publish a new book soon."
+    },
+    {
+        "word": "effective",
+        "meaning": "有效的",
+        "sentence": "This medicine is very effective against the flu."
+    },
+    {
+        "word": "gossip",
+        "meaning": "流言蜚语",
+        "sentence": "It is not polite to gossip about others."
+    },
+    {
+        "word": "intelligence",
+        "meaning": "智力，聪明，智能",
+        "sentence": "Artificial intelligence is changing the world."
+    },
+    {
+        "word": "reality",
+        "meaning": "真实，事实，现实",
+        "sentence": "You need to face reality."
+    },
+    {
+        "word": "exploration",
+        "meaning": "探索，探究",
+        "sentence": "Space exploration requires advanced technology."
+    },
+    {
+        "word": "species",
+        "meaning": "种类，物种",
+        "sentence": "Many bird species migrate in winter."
+    },
+    {
+        "word": "cognitive",
+        "meaning": "认知的",
+        "sentence": "Puzzles can improve cognitive skills."
+    },
+    {
+        "word": "compete",
+        "meaning": "竞争，比赛",
+        "sentence": "Athletes compete for the gold medal."
+    },
+    {
+        "word": "disease",
+        "meaning": "疾病",
+        "sentence": "Vaccines help prevent serious disease."
+    },
+    {
+        "word": "evidence",
+        "meaning": "证据",
+        "sentence": "There is no evidence to support his claim."
+    },
+    {
+        "word": "memorize",
+        "meaning": "记住",
+        "sentence": "You need to memorize these vocabulary words."
+    },
+    {
+        "word": "recycle",
+        "meaning": "回收",
+        "sentence": "We should recycle paper and glass bottles."
+    },
+    {
+        "word": "resource",
+        "meaning": "资源",
+        "sentence": "Water is a precious natural resource."
+    },
+    {
+        "word": "argument",
+        "meaning": "争论(吵)，辩论，理由，论证",
+        "sentence": "They had a heated argument about politics."
+    },
+    {
+        "word": "esteem",
+        "meaning": "尊重，敬重；把…看作，认为",
+        "sentence": "He holds his teacher in high esteem."
+    },
+    {
+        "word": "injury",
+        "meaning": "伤害",
+        "sentence": "The player suffered a knee injury."
+    },
+    {
+        "word": "powerful",
+        "meaning": "强大的，有权力的",
+        "sentence": "The car has a very powerful engine."
+    },
+    {
+        "word": "throughout",
+        "meaning": "遍及，贯穿；始终",
+        "sentence": "It rained throughout the day."
+    },
+    {
+        "word": "appreciate",
+        "meaning": "欣赏，感激，理解",
+        "sentence": "I really appreciate your help."
+    },
+    {
+        "word": "gratitude",
+        "meaning": "感激",
+        "sentence": "She smiled to show her gratitude."
+    },
+    {
+        "word": "limited",
+        "meaning": "有限的",
+        "sentence": "Seats are limited, so book early."
+    },
+    {
+        "word": "mental",
+        "meaning": "精神的，心理的",
+        "sentence": "Mental health is as important as physical health."
+    },
+    {
+        "word": "outcome",
+        "meaning": "结果",
+        "sentence": "We are waiting for the outcome of the election."
+    },
+    {
+        "word": "reward",
+        "meaning": "报酬，酬劳；奖赏",
+        "sentence": "Success is the reward for hard work."
+    },
+    {
+        "word": "beneficial",
+        "meaning": "有益的，有利的",
+        "sentence": "Reading is beneficial to your mind."
+    },
+    {
+        "word": "biological",
+        "meaning": "生物学的",
+        "sentence": "He met his biological parents for the first time."
+    },
+    {
+        "word": "conclude",
+        "meaning": "得出结论，（使）结束",
+        "sentence": "I will conclude my speech with a quote."
+    },
+    {
+        "word": "define",
+        "meaning": "阐明，限定；给…下定义",
+        "sentence": "It is difficult to define the meaning of love."
+    },
+    {
+        "word": "package",
+        "meaning": "包裹",
+        "sentence": "The mailman delivered a large package."
+    },
+    {
+        "word": "psychological",
+        "meaning": "心理的；精神上的；心理学的",
+        "sentence": "Stress can cause psychological problems."
+    },
+    {
+        "word": "recall",
+        "meaning": "记起，召回",
+        "sentence": "I cannot recall where I put my keys."
+    },
+    {
+        "word": "recipe",
+        "meaning": "食谱，处方，秘诀",
+        "sentence": "This cake recipe is easy to follow."
+    },
+    {
+        "word": "replace",
+        "meaning": "代替",
+        "sentence": "You need to replace the batteries in the remote."
+    },
+    {
+        "word": "respond",
+        "meaning": "反映，回应",
+        "sentence": "Please respond to my email as soon as possible."
+    },
+    {
+        "word": "status",
+        "meaning": "地位，身份，状态",
+        "sentence": "What is the current status of the project?"
+    },
+    {
+        "word": "strengthen",
+        "meaning": "加强，巩固",
+        "sentence": "Exercise helps to strengthen your muscles."
+    },
+    {
+        "word": "stressed",
+        "meaning": "焦虑不安的；心力交瘁的",
+        "sentence": "I feel very stressed about the upcoming exam."
+    },
+    {
+        "word": "unlock",
+        "meaning": "开…的锁；揭示",
+        "sentence": "Use the key to unlock the door."
+    },
+    {
+        "word": "willing",
+        "meaning": "愿意的，乐意的",
+        "sentence": "I am willing to help you move house."
+    },
+    {
+        "word": "challenging",
+        "meaning": "有挑战性的",
+        "sentence": "The puzzle was difficult and challenging."
+    },
+    {
+        "word": "detail",
+        "meaning": "细节",
+        "sentence": "Please explain the plan in detail."
+    },
+    {
+        "word": "digital",
+        "meaning": "数字式的",
+        "sentence": "We live in a digital age."
+    },
+    {
+        "word": "discipline",
+        "meaning": "学科，纪律；管教",
+        "sentence": "Learning a new language requires discipline."
+    },
+    {
+        "word": "indication",
+        "meaning": "暴露，显露，揭露",
+        "sentence": "Too much sun exposure can damage your skin."
+    },
+    {
+        "word": "literacy",
+        "meaning": "识字；有文化",
+        "sentence": "The government is trying to improve literacy rates."
+    },
+    {
+        "word": "overweight",
+        "meaning": "超重",
+        "sentence": "Lack of exercise can cause you to become overweight."
+    },
+    {
+        "word": "tend",
+        "meaning": "倾向，照料",
+        "sentence": "He tends to be late for meetings."
+    },
+    {
+        "word": "track",
+        "meaning": "踪迹，轨道，跑道，小径；跟踪",
+        "sentence": "You can track your package online."
+    },
+    {
+        "word": "transportation",
+        "meaning": "运输",
+        "sentence": "Public transportation in this city is convenient."
+    },
+    {
+        "word": "athlete",
+        "meaning": "运动员",
+        "sentence": "He is a professional athlete."
+    },
+    {
+        "word": "climate",
+        "meaning": "气候",
+        "sentence": "Climate change is a global issue."
+    },
+    {
+        "word": "desire",
+        "meaning": "渴望，要求",
+        "sentence": "She has a strong desire to travel the world."
+    },
+    {
+        "word": "distance",
+        "meaning": "距离",
+        "sentence": "The distance between the two cities is far."
+    },
+    {
+        "word": "exist",
+        "meaning": "存在，生存",
+        "sentence": "Do you believe that ghosts exist?"
+    },
+    {
+        "word": "function",
+        "meaning": "功能，机能，函数；运转，起作用",
+        "sentence": "The main function of the heart is to pump blood."
+    },
+    {
+        "word": "gradual",
+        "meaning": "逐渐的",
+        "sentence": "The recovery process was gradual but steady."
+    },
+    {
+        "word": "inspire",
+        "meaning": "鼓舞，给…以灵感",
+        "sentence": "His story will inspire many young people."
+    },
+    {
+        "word": "potential",
+        "meaning": "潜能，可能性；可能的，潜在的",
+        "sentence": "The new employee has great potential."
+    },
+    {
+        "word": "procrastinate",
+        "meaning": "耽搁，拖延",
+        "sentence": "Don't procrastinate on your homework."
+    },
+    {
+        "word": "puzzle",
+        "meaning": "谜；迷惑，使困惑",
+        "sentence": "I am trying to solve a crossword puzzle."
+    },
+    {
+        "word": "signal",
+        "meaning": "信号；发信号，表明",
+        "sentence": "The red light is a signal to stop."
+    },
+    {
+        "word": "structure",
+        "meaning": "结构",
+        "sentence": "The structure of the building is very safe."
+    },
+    {
+        "word": "theory",
+        "meaning": "理论",
+        "sentence": "It is just a theory, not a proven fact."
+    },
+    {
+        "word": "variety",
+        "meaning": "多样性，种类",
+        "sentence": "The shop sells a wide variety of fruits."
+    },
+    {
+        "word": "available",
+        "meaning": "可用的，可得到的，有空的",
+        "sentence": "Is this seat available?"
+    },
+    {
+        "word": "boredom",
+        "meaning": "无聊",
+        "sentence": "She started drawing out of boredom."
+    },
+    {
+        "word": "charity",
+        "meaning": "慈善团体",
+        "sentence": "He donated a lot of money to charity."
+    },
+    {
+        "word": "combine",
+        "meaning": "联合，结合",
+        "sentence": "Combine the flour and sugar in a bowl."
+    },
+    {
+        "word": "confused",
+        "meaning": "胡涂的，迷惑的",
+        "sentence": "I was confused by the complicated instructions."
+    },
+    {
+        "word": "escape",
+        "meaning": "逃脱，逃走",
+        "sentence": "The bird tried to escape from the cage."
+    },
+    {
+        "word": "exchange",
+        "meaning": "外汇，兑换，交换，交流",
+        "sentence": "We can exchange phone numbers later."
+    },
+    {
+        "word": "expand",
+        "meaning": "扩大，扩展",
+        "sentence": "The company plans to expand its business."
+    },
+    {
+        "word": "expression",
+        "meaning": "词语，表示，表达",
+        "sentence": "Her facial expression showed surprise."
+    },
+    {
+        "word": "increasingly",
+        "meaning": "越来越多地，不断增加地",
+        "sentence": "It is becoming increasingly difficult to find parking."
+    },
+    {
+        "word": "loneliness",
+        "meaning": "孤独，寂寞",
+        "sentence": "He felt a deep sense of loneliness."
+    },
+    {
+        "word": "movement",
+        "meaning": "运动，动作，活动",
+        "sentence": "The movement of the dancer was graceful."
+    },
+    {
+        "word": "observe",
+        "meaning": "观察，遵守，庆祝",
+        "sentence": "Scientists observe the stars through telescopes."
+    },
+    {
+        "word": "option",
+        "meaning": "选择",
+        "sentence": "You have the option to cancel at any time."
+    },
+    {
+        "word": "particular",
+        "meaning": "特别的，讲究的，挑剔的",
+        "sentence": "I am looking for a particular book."
+    },
+    {
+        "word": "reaction",
+        "meaning": "反应，化学反应",
+        "sentence": "His immediate reaction was anger."
+    },
+    {
+        "word": "charge",
+        "meaning": "收费，管理，充电，冲刺，控告",
+        "sentence": "Please charge your phone before we leave."
+    },
+    {
+        "word": "competence",
+        "meaning": "能力",
+        "sentence": "The job requires a high level of competence."
+    },
+    {
+        "word": "concentrate",
+        "meaning": "集中",
+        "sentence": "I cannot concentrate with that noise."
+    },
+    {
+        "word": "consume",
+        "meaning": "消耗，消费",
+        "sentence": "Cars consume a lot of fuel."
+    },
+    {
+        "word": "critical",
+        "meaning": "关键性的，批评的",
+        "sentence": "It is critical to finish this today."
+    },
+    {
+        "word": "decrease",
+        "meaning": "减少，降低",
+        "sentence": "We must decrease pollution levels."
+    },
+    {
+        "word": "ecology",
+        "meaning": "生态",
+        "sentence": "Pollution harms the fragile ecology."
+    },
+    {
+        "word": "enrich",
+        "meaning": "使丰富",
+        "sentence": "Reading can enrich your life."
+    },
+    {
+        "word": "evaluate",
+        "meaning": "评价，评估",
+        "sentence": "The teacher will evaluate your progress."
+    },
+    {
+        "word": "exhibit",
+        "meaning": "展品，展览；表现，显出",
+        "sentence": "The museum will exhibit ancient artifacts."
+    },
+    {
+        "word": "extracurricular",
+        "meaning": "课外的",
+        "sentence": "She participates in many extracurricular activities."
+    },
+    {
+        "word": "independent",
+        "meaning": "独立的，不相关的",
+        "sentence": "He wants to be financially independent."
+    },
+    {
+        "word": "interact",
+        "meaning": "互动，相互作用",
+        "sentence": "Children learn how to interact with others at school."
+    },
+    {
+        "word": "layer",
+        "meaning": "（分）层次",
+        "sentence": "The cake has a layer of chocolate inside."
+    },
+    {
+        "word": "major",
+        "meaning": "主修，主修科目；主要的",
+        "sentence": "Pollution is a major problem in big cities."
+    },
+    {
+        "word": "pattern",
+        "meaning": "图案，样式，模式，榜样",
+        "sentence": "The shirt has a striped pattern."
+    },
+    {
+        "word": "popularity",
+        "meaning": "受欢迎，普及",
+        "sentence": "The game is gaining popularity rapidly."
+    },
+    {
+        "word": "practical",
+        "meaning": "实用的，实际的",
+        "sentence": "We need a practical solution."
+    },
+    {
+        "word": "priority",
+        "meaning": "优先事项，优先(权)",
+        "sentence": "Safety is our top priority."
+    },
+    {
+        "word": "privacy",
+        "meaning": "隐私",
+        "sentence": "Please respect my privacy."
+    },
+    {
+        "word": "productive",
+        "meaning": "多产的",
+        "sentence": "We had a very productive meeting."
+    },
+    {
+        "word": "routine",
+        "meaning": "常规",
+        "sentence": "Morning exercise is part of my routine."
+    },
+    {
+        "word": "sacrifice",
+        "meaning": "牺牲，祭祀，祭品",
+        "sentence": "Parents often sacrifice for their children."
+    },
+    {
+        "word": "socialize",
+        "meaning": "（和他人）交往，交际",
+        "sentence": "Parties are a good place to socialize."
+    },
+    {
+        "word": "storage",
+        "meaning": "贮藏，仓库",
+        "sentence": "My phone is running out of storage."
+    },
+    {
+        "word": "struggle",
+        "meaning": "挣扎",
+        "sentence": "It was a struggle to get out of bed."
+    },
+    {
+        "word": "switch",
+        "meaning": "开关，转变",
+        "sentence": "Please switch off the lights."
+    },
+    {
+        "word": "trash",
+        "meaning": "垃圾",
+        "sentence": "Don't throw trash on the street."
+    },
+    {
+        "word": "trick",
+        "meaning": "诡计，把戏，诀窍；欺骗",
+        "sentence": "The magician performed a card trick."
+    },
+    {
+        "word": "trustworthy",
+        "meaning": "值得信任的，可靠的",
+        "sentence": "He is a hardworking and trustworthy employee."
+    },
+    {
+        "word": "virtual",
+        "meaning": "虚拟的",
+        "sentence": "We will hold a virtual meeting online."
+    },
+    {
+        "word": "access",
+        "meaning": "通道、路径，机会",
+        "sentence": "I do not have access to that file."
+    },
+    {
+        "word": "adapt",
+        "meaning": "改编，适应",
+        "sentence": "Animals must adapt to their environment."
+    },
+    {
+        "word": "attack",
+        "meaning": "攻击",
+        "sentence": "The dog might attack if you run."
+    },
+    {
+        "word": "carbon",
+        "meaning": "碳",
+        "sentence": "Trees absorb carbon dioxide."
+    },
+    {
+        "word": "damage",
+        "meaning": "损失，损害",
+        "sentence": "The storm caused a lot of damage."
+    },
+    {
+        "word": "display",
+        "meaning": "陈列，展出",
+        "sentence": "The store put the new clothes on display."
+    },
+    {
+        "word": "distract",
+        "meaning": "使分心",
+        "sentence": "Don't let the noise distract you."
+    },
+    {
+        "word": "equipment",
+        "meaning": "装备，器材",
+        "sentence": "You need special equipment for diving."
+    },
+    {
+        "word": "external",
+        "meaning": "外部的",
+        "sentence": "The cream is for external use only."
+    },
+    {
+        "word": "feedback",
+        "meaning": "反馈",
+        "sentence": "We welcome your feedback on our service."
+    },
+    {
+        "word": "freedom",
+        "meaning": "自由",
+        "sentence": "Everyone values their freedom."
+    },
+    {
+        "word": "indicator",
+        "meaning": "指示信号，标志，迹象，指示器",
+        "sentence": "High fever is an indicator of infection."
+    },
+    {
+        "word": "intake",
+        "meaning": "吸收；吸入",
+        "sentence": "Watch your daily sugar intake."
+    },
+    {
+        "word": "invitation",
+        "meaning": "邀请，招待",
+        "sentence": "I received an invitation to the wedding."
+    },
+    {
+        "word": "lifestyle",
+        "meaning": "生活方式",
+        "sentence": "Regular exercise is part of a healthy lifestyle."
+    },
+    {
+        "word": "management",
+        "meaning": "管理",
+        "sentence": "Good time management is essential."
+    },
+    {
+        "word": "metal",
+        "meaning": "金属",
+        "sentence": "The gate is made of metal."
+    },
+    {
+        "word": "mindful",
+        "meaning": "留心的，注意的",
+        "sentence": "Be mindful of your surroundings."
+    },
+    {
+        "word": "principle",
+        "meaning": "道德原则，行为准则，法则",
+        "sentence": "It is a matter of principle."
+    },
+    {
+        "word": "react",
+        "meaning": "反应",
+        "sentence": "How did he react to the news?"
+    },
+    {
+        "word": "reasonable",
+        "meaning": "有道理的，合理的",
+        "sentence": "The price is quite reasonable."
+    },
+    {
+        "word": "release",
+        "meaning": "释放，发行，发布",
+        "sentence": "They will release the movie next month."
+    },
+    {
+        "word": "stare",
+        "meaning": "凝视，注视",
+        "sentence": "It is rude to stare at people."
+    },
+    {
+        "word": "strategy",
+        "meaning": "战略，策略",
+        "sentence": "We need a new marketing strategy."
+    },
+    {
+        "word": "transport",
+        "meaning": "运送，运输",
+        "sentence": "Trucks transport goods across the country."
+    },
+    {
+        "word": "trend",
+        "meaning": "趋势，潮流",
+        "sentence": "Fashion trends change every year."
+    },
+    {
+        "word": "virus",
+        "meaning": "病毒",
+        "sentence": "The computer has a virus."
+    },
+    {
+        "word": "abuse",
+        "meaning": "滥用",
+        "sentence": "We must stop animal abuse."
+    },
+    {
+        "word": "adventure",
+        "meaning": "冒险(活动)",
+        "sentence": "Going to the jungle was a big adventure."
+    },
+    {
+        "word": "ancestor",
+        "meaning": "祖先",
+        "sentence": "His ancestors came from Italy."
+    },
+    {
+        "word": "artificial",
+        "meaning": "人造的，假的",
+        "sentence": "Artificial flowers last longer than real ones."
+    },
+    {
+        "word": "assess",
+        "meaning": "评估",
+        "sentence": "Experts will assess the damage."
+    },
+    {
+        "word": "assumption",
+        "meaning": "假定，承担",
+        "sentence": "Don't make an assumption without facts."
+    },
+    {
+        "word": "audience",
+        "meaning": "听众，观众",
+        "sentence": "The audience clapped loudly."
+    },
+    {
+        "word": "balanced",
+        "meaning": "平衡的",
+        "sentence": "You need a balanced diet to stay healthy."
+    },
+    {
+        "word": "bargain",
+        "meaning": "交易，便宜货；讨价还价",
+        "sentence": "This dress was a real bargain."
+    },
+    {
+        "word": "battery",
+        "meaning": "电池",
+        "sentence": "My phone battery is low."
+    },
+    {
+        "word": "bias",
+        "meaning": "偏见，成见，偏好，偏爱",
+        "sentence": "The judge should not show any bias."
+    },
+    {
+        "word": "capsule",
+        "meaning": "胶囊，密封舱",
+        "sentence": "Take one capsule after breakfast."
+    },
+    {
+        "word": "characteristic",
+        "meaning": "特性；特有的，典型的",
+        "sentence": "Stripes are a characteristic of zebras."
+    },
+    {
+        "word": "comment",
+        "meaning": "评论",
+        "sentence": "Please leave a comment below."
+    },
+    {
+        "word": "concept",
+        "meaning": "概念",
+        "sentence": "The concept of time travel is fascinating."
+    },
+    {
+        "word": "contain",
+        "meaning": "包含，容纳",
+        "sentence": "Does this food contain nuts?"
+    },
+    {
+        "word": "decade",
+        "meaning": "十年，十年期",
+        "sentence": "Trends change every decade."
+    },
+    {
+        "word": "depression",
+        "meaning": "抑郁，沮丧",
+        "sentence": "He is suffering from depression."
+    },
+    {
+        "word": "ecosystem",
+        "meaning": "生态系统",
+        "sentence": "The coral reef is a diverse ecosystem."
+    },
+    {
+        "word": "elementary",
+        "meaning": "基本的，初级的",
+        "sentence": "It is an elementary mistake."
+    },
+    {
+        "word": "extreme",
+        "meaning": "极端；极端的，末端的，尽头的",
+        "sentence": "They hiked in extreme weather."
+    },
+    {
+        "word": "familiar",
+        "meaning": "熟悉的",
+        "sentence": "His face looks familiar."
+    },
+    {
+        "word": "fitness",
+        "meaning": "适合，健康",
+        "sentence": "Swimming is great for overall fitness."
+    },
+    {
+        "word": "historical",
+        "meaning": "历史(上)的",
+        "sentence": "We visited many historical sites."
+    },
+    {
+        "word": "ingredient",
+        "meaning": "组成部分，（烹调的）原料",
+        "sentence": "Flour is a main ingredient in bread."
+    },
+    {
+        "word": "insight",
+        "meaning": "洞察力，领悟",
+        "sentence": "The book offers deep insight into history."
+    },
+    {
+        "word": "laptop",
+        "meaning": "笔记本电脑",
+        "sentence": "I work on my laptop at the cafe."
+    },
+    {
+        "word": "leak",
+        "meaning": "漏洞；渗漏，泄露",
+        "sentence": "The roof has a leak."
+    },
+    {
+        "word": "meanwhile",
+        "meaning": "与此同时，其间",
+        "sentence": "Cook the pasta; meanwhile, chop the vegetables."
+    },
+    {
+        "word": "obesity",
+        "meaning": "肥胖",
+        "sentence": "Obesity is a growing health problem."
+    },
+    {
+        "word": "outweigh",
+        "meaning": "比...更重，比...更重要",
+        "sentence": "The benefits outweigh the risks."
+    },
+    {
+        "word": "overcome",
+        "meaning": "克服，(感情上)受到极大影响",
+        "sentence": "She worked hard to overcome her fears."
+    },
+    {
+        "word": "platform",
+        "meaning": "站台，平台",
+        "sentence": "The train is leaving from platform 3."
+    },
+    {
+        "word": "preference",
+        "meaning": "偏爱",
+        "sentence": "I have a preference for tea over coffee."
+    },
+    {
+        "word": "presence",
+        "meaning": "出席；存在",
+        "sentence": "Your presence is requested at the meeting."
+    },
+    {
+        "word": "psychology",
+        "meaning": "心理学，心理",
+        "sentence": "She is studying psychology at college."
+    },
+    {
+        "word": "range",
+        "meaning": "山脉，幅度，范围，种类；变动",
+        "sentence": "The shop offers a wide range of products."
+    },
+    {
+        "word": "relaxation",
+        "meaning": "放松，休息，消遣",
+        "sentence": "Yoga is good for relaxation."
+    },
+    {
+        "word": "satellite",
+        "meaning": "卫星",
+        "sentence": "The moon is a satellite of the earth."
+    },
+    {
+        "word": "satisfaction",
+        "meaning": "满足(意)",
+        "sentence": "He smiled with satisfaction."
+    },
+    {
+        "word": "schedule",
+        "meaning": "日程表；为某事安排时间",
+        "sentence": "My schedule is very busy today."
+    },
+    {
+        "word": "sensitive",
+        "meaning": "体贴的，敏感的，灵敏的",
+        "sentence": "My skin is very sensitive to the sun."
+    },
+    {
+        "word": "specialist",
+        "meaning": "专家",
+        "sentence": "She is a specialist in eye diseases."
+    },
+    {
+        "word": "steel",
+        "meaning": "钢，钢铁",
+        "sentence": "The bridge is made of steel."
+    },
+    {
+        "word": "suffer",
+        "meaning": "经受，遭受",
+        "sentence": "Many people suffer from allergies."
+    },
+    {
+        "word": "survive",
+        "meaning": "幸免，幸存",
+        "sentence": "Camels can survive in the desert without water."
+    },
+    {
+        "word": "tank",
+        "meaning": "坦克，箱，储水池",
+        "sentence": "He filled the gas tank before the trip."
+    },
+    {
+        "word": "tap",
+        "meaning": "塞子，龙头；轻拍",
+        "sentence": "Please turn off the tap tightly."
+    },
+    {
+        "word": "timetable",
+        "meaning": "时间表，时刻表",
+        "sentence": "The bus timetable has changed."
+    },
+    {
+        "word": "treatment",
+        "meaning": "对待，治疗",
+        "sentence": "The best treatment is rest."
+    },
+    {
+        "word": "volume",
+        "meaning": "卷，册，体积，容量，大量，音量",
+        "sentence": "Please turn down the volume."
+    },
+    {
+        "word": "widespread",
+        "meaning": "分布广泛的，普遍的",
+        "sentence": "Flu is widespread in winter."
+    },
+    {
+        "word": "absolute",
+        "meaning": "绝对的，完全的",
+        "sentence": "I have absolute confidence in you."
+    },
+    {
+        "word": "admit",
+        "meaning": "承认，准许…进入，录取",
+        "sentence": "He refused to admit his mistake."
+    },
+    {
+        "word": "aggression",
+        "meaning": "进攻；侵略；侵犯",
+        "sentence": "The dog showed signs of aggression."
+    },
+    {
+        "word": "awesome",
+        "meaning": "可怕的，令人敬畏的，极好的",
+        "sentence": "The view from the top is awesome."
+    },
+    {
+        "word": "bake",
+        "meaning": "烘焙，烤",
+        "sentence": "I will bake a cake for her birthday."
+    },
+    {
+        "word": "blame",
+        "meaning": "（坏事或错事的）责任；责备，归咎于",
+        "sentence": "Don't blame me for the delay."
+    },
+    {
+        "word": "border",
+        "meaning": "边界，边境；接壤",
+        "sentence": "We crossed the border into France."
+    },
+    {
+        "word": "bother",
+        "meaning": "打扰，使烦恼，费心",
+        "sentence": "Sorry to bother you."
+    },
+    {
+        "word": "civilization",
+        "meaning": "文明",
+        "sentence": "Ancient Greek civilization is fascinating."
+    },
+    {
+        "word": "colleague",
+        "meaning": "同事",
+        "sentence": "She is a colleague of mine."
+    },
+    {
+        "word": "complex",
+        "meaning": "复杂的",
+        "sentence": "The problem is very complex."
+    },
+    {
+        "word": "concern",
+        "meaning": "关心；与…有关",
+        "sentence": "My main concern is safety."
+    },
+    {
+        "word": "conserve",
+        "meaning": "保存，节约",
+        "sentence": "We must conserve energy."
+    },
+    {
+        "word": "contribute",
+        "meaning": "捐献，贡献，是…的原因",
+        "sentence": "Everyone should contribute to the discussion."
+    },
+    {
+        "word": "credit",
+        "meaning": "信誉，学分，赞扬；归功于",
+        "sentence": "She got no credit for her work."
+    },
+    {
+        "word": "crime",
+        "meaning": "犯罪，罪行",
+        "sentence": "Robbery is a serious crime."
+    },
+    {
+        "word": "criticism",
+        "meaning": "批评，评论",
+        "sentence": "He cannot accept criticism."
+    },
+    {
+        "word": "deadline",
+        "meaning": "截止日期",
+        "sentence": "The deadline for the project is tomorrow."
+    },
+    {
+        "word": "degrade",
+        "meaning": "贬低，使恶化，分解",
+        "sentence": "Plastic bags degrade slowly."
+    },
+    {
+        "word": "delivery",
+        "meaning": "传送；递送",
+        "sentence": "The delivery arrived late."
+    },
+    {
+        "word": "demand",
+        "meaning": "（强烈）要求",
+        "sentence": "There is a high demand for new cars."
+    },
+    {
+        "word": "dessert",
+        "meaning": "甜食，点心",
+        "sentence": "We had ice cream for dessert."
+    },
+    {
+        "word": "discomfort",
+        "meaning": "不舒服；不适",
+        "sentence": "The shoes caused him some discomfort."
+    },
+    {
+        "word": "discourage",
+        "meaning": "使泄气，使沮丧，劝阻",
+        "sentence": "Don't let failure discourage you."
+    },
+    {
+        "word": "economic",
+        "meaning": "经济的，经济学的",
+        "sentence": "The country is facing an economic crisis."
+    },
+    {
+        "word": "emergency",
+        "meaning": "紧急情况",
+        "sentence": "Call 911 in case of an emergency."
+    },
+    {
+        "word": "endanger",
+        "meaning": "危害，使受到危险",
+        "sentence": "Pollution endangers marine life."
+    },
+    {
+        "word": "entertain",
+        "meaning": "使…娱乐，招待",
+        "sentence": "He tried to entertain the guests with jokes."
+    },
+    {
+        "word": "exception",
+        "meaning": "例外，例外的人、事",
+        "sentence": "There is an exception to every rule."
+    },
+    {
+        "word": "extraordinary",
+        "meaning": "非凡的，不平常的",
+        "sentence": "She has extraordinary talent."
+    },
+    {
+        "word": "financial",
+        "meaning": "财政的，金融的",
+        "sentence": "He is in financial difficulty."
+    },
+    {
+        "word": "flexible",
+        "meaning": "柔韧的，易弯曲的，灵活的",
+        "sentence": "My work schedule is flexible."
+    },
+    {
+        "word": "grateful",
+        "meaning": "感谢的",
+        "sentence": "I am grateful for your support."
+    },
+    {
+        "word": "greenhouse",
+        "meaning": "温室",
+        "sentence": "Tomatoes grow well in a greenhouse."
+    },
+    {
+        "word": "handle",
+        "meaning": "柄，把手；拿，处理，操纵，驾驭",
+        "sentence": "Can you handle this heavy box?"
+    },
+    {
+        "word": "healthcare",
+        "meaning": "健康护理",
+        "sentence": "Good healthcare is important for everyone."
+    },
+    {
+        "word": "humanity",
+        "meaning": "人类，人性；人文学科",
+        "sentence": "We must show humanity to others."
+    },
+    {
+        "word": "import",
+        "meaning": "进口，输入",
+        "sentence": "We import coffee from Brazil."
+    },
+    {
+        "word": "income",
+        "meaning": "收入",
+        "sentence": "His monthly income has increased."
+    },
+    {
+        "word": "inherit",
+        "meaning": "继承，经遗传获得",
+        "sentence": "She will inherit the house."
+    },
+    {
+        "word": "innovation",
+        "meaning": "创新",
+        "sentence": "Innovation drives progress."
+    },
+    {
+        "word": "install",
+        "meaning": "安装；设置",
+        "sentence": "I need to install new software."
+    },
+    {
+        "word": "interpersonal",
+        "meaning": "人际的",
+        "sentence": "She has good interpersonal skills."
+    },
+    {
+        "word": "lantern",
+        "meaning": "灯笼",
+        "sentence": "He hung a lantern outside the door."
+    },
+    {
+        "word": "length",
+        "meaning": "长度",
+        "sentence": "Measure the length of the room."
+    },
+    {
+        "word": "location",
+        "meaning": "位置",
+        "sentence": "The hotel is in a great location."
+    },
+    {
+        "word": "logical",
+        "meaning": "符合逻辑的",
+        "sentence": "That is a logical conclusion."
+    },
+    {
+        "word": "male",
+        "meaning": "男性的；雄性的",
+        "sentence": "The bird is a male."
+    },
+    {
+        "word": "multiple",
+        "meaning": "倍数；多的",
+        "sentence": "There are multiple choice questions."
+    },
+    {
+        "word": "nationwide",
+        "meaning": "全国性的",
+        "sentence": "The news was broadcast nationwide."
+    },
+    {
+        "word": "native",
+        "meaning": "当地的；本地人",
+        "sentence": "He is a native speaker of English."
+    },
+    {
+        "word": "noticeable",
+        "meaning": "显著的；显而易见的",
+        "sentence": "There is a noticeable difference."
+    },
+    {
+        "word": "occurring",
+        "meaning": "偶尔的",
+        "sentence": "We have occasional rain in summer."
+    },
+    {
+        "word": "outgoing",
+        "meaning": "开朗的",
+        "sentence": "She is very outgoing and makes friends easily."
+    },
+    {
+        "word": "overlook",
+        "meaning": "忽略；俯视",
+        "sentence": "The room overlooks the garden."
+    },
+    {
+        "word": "pack",
+        "meaning": "包裹；包装，打包",
+        "sentence": "I need to pack my suitcase."
+    },
+    {
+        "word": "passive",
+        "meaning": "消极的，被动的",
+        "sentence": "Passive smoking is harmful."
+    },
+    {
+        "word": "poetry",
+        "meaning": "诗篇，诗歌",
+        "sentence": "She loves reading poetry."
+    },
+    {
+        "word": "pollutant",
+        "meaning": "污染物",
+        "sentence": "Smoke is a common air pollutant."
+    },
+    {
+        "word": "preserve",
+        "meaning": "腌菜，泡菜，果酱；保存，保护",
+        "sentence": "We must preserve our history."
+    },
+    {
+        "word": "professional",
+        "meaning": "专业的，职业的，专业人员",
+        "sentence": "Behave in a professional manner."
+    },
+    {
+        "word": "pure",
+        "meaning": "纯的，纯粹的，纯洁的",
+        "sentence": "This ring is made of pure gold."
+    },
+    {
+        "word": "realistic",
+        "meaning": "现实的，实际的",
+        "sentence": "Let's be realistic about the goals."
+    },
+    {
+        "word": "relaxing",
+        "meaning": "轻松的，放松的",
+        "sentence": "A warm bath is very relaxing."
+    },
+    {
+        "word": "religious",
+        "meaning": "宗教的，虔诚的",
+        "sentence": "It is a religious holiday."
+    },
+    {
+        "word": "reserve",
+        "meaning": "保护区；保护，预定",
+        "sentence": "Please reserve a table for two."
+    },
+    {
+        "word": "reusable",
+        "meaning": "可重复使用的",
+        "sentence": "Use reusable bags for shopping."
+    },
+    {
+        "word": "risky",
+        "meaning": "有风险的",
+        "sentence": "Investing in that stock is risky."
+    },
+    {
+        "word": "roll",
+        "meaning": "卷形物，面包圈；滚动",
+        "sentence": "The ball rolled down the hill."
+    },
+    {
+        "word": "satisfying",
+        "meaning": "令人满意（或满足）的",
+        "sentence": "Finishing the job was satisfying."
+    },
+    {
+        "word": "scan",
+        "meaning": "扫描，浏览",
+        "sentence": "Please scan the document."
+    },
+    {
+        "word": "scared",
+        "meaning": "感到害怕的",
+        "sentence": "The loud noise scared the cat."
+    },
+    {
+        "word": "scene",
+        "meaning": "景色，场景，现场",
+        "sentence": "The police arrived at the crime scene."
+    },
+    {
+        "word": "sculpture",
+        "meaning": "雕刻",
+        "sentence": "There is a stone sculpture in the park."
+    },
+    {
+        "word": "stable",
+        "meaning": "马厩；稳固的，稳定的，沉稳的",
+        "sentence": "The patient is in stable condition."
+    },
+    {
+        "word": "strength",
+        "meaning": "力气，毅力，优势",
+        "sentence": "He showed great physical strength."
+    },
+    {
+        "word": "threat",
+        "meaning": "威胁，征兆",
+        "sentence": "Pollution is a threat to the environment."
+    },
+    {
+        "word": "thrill",
+        "meaning": "兴奋，激动，使非常兴奋",
+        "sentence": "The roller coaster gave me a thrill."
+    },
+    {
+        "word": "tiredness",
+        "meaning": "疲劳",
+        "sentence": "She felt overcome by tiredness."
+    },
+    {
+        "word": "tiring",
+        "meaning": "令人困倦的；使人疲劳的",
+        "sentence": "The long journey was tiring."
+    },
+    {
+        "word": "update",
+        "meaning": "更新",
+        "sentence": "Please update your antivirus software."
+    },
+    {
+        "word": "version",
+        "meaning": "版本",
+        "sentence": "Please update the app to the latest version."
+    },
+    {
+        "word": "wander",
+        "meaning": "闲逛，漫游，漫步",
+        "sentence": "We like to wander around the old city."
+    },
+    {
+        "word": "weaken",
+        "meaning": "（使）虚弱，削弱；动摇",
+        "sentence": "The storm began to weaken in the afternoon."
+    },
+    {
+        "word": "whale",
+        "meaning": "鲸鱼",
+        "sentence": "The blue whale is the largest animal."
+    },
+    {
+        "word": "wrap",
+        "meaning": "包，裹",
+        "sentence": "Please wrap the gift carefully."
+    },
+    {
+        "word": "achievable",
+        "meaning": "可实现的",
+        "sentence": "Set goals that are achievable."
+    },
+    {
+        "word": "addiction",
+        "meaning": "着迷，嗜好",
+        "sentence": "Phone addiction is a common problem."
+    },
+    {
+        "word": "admiration",
+        "meaning": "赏，钦佩",
+        "sentence": "I have great admiration for her courage."
+    },
+    {
+        "word": "advance",
+        "meaning": "前进，进步，提前",
+        "sentence": "Technological advance changes our lives."
+    },
+    {
+        "word": "affordable",
+        "meaning": "负担得起的",
+        "sentence": "This car is very affordable."
+    },
+    {
+        "word": "analysis",
+        "meaning": "分析",
+        "sentence": "The report contains a detailed analysis."
+    },
+    {
+        "word": "application",
+        "meaning": "应用，申请",
+        "sentence": "Submit your job application online."
+    },
+    {
+        "word": "approach",
+        "meaning": "方法，途径；靠近",
+        "sentence": "We need a new approach to solve this."
+    },
+    {
+        "word": "appropriate",
+        "meaning": "恰当的",
+        "sentence": "Wear clothes that are appropriate for the weather."
+    },
+    {
+        "word": "architecture",
+        "meaning": "建筑学(业)",
+        "sentence": "The city is famous for its ancient architecture."
+    },
+    {
+        "word": "artwork",
+        "meaning": "艺术作品",
+        "sentence": "The gallery displays local artwork."
+    },
+    {
+        "word": "assignment",
+        "meaning": "任务，作业",
+        "sentence": "I have a history assignment due tomorrow."
+    },
+    {
+        "word": "associated",
+        "meaning": "关联的",
+        "sentence": "There are risks associated with this investment."
+    },
+    {
+        "word": "award",
+        "meaning": "奖，奖品",
+        "sentence": "He won an award for his acting."
+    },
+    {
+        "word": "breakthrough",
+        "meaning": "突破",
+        "sentence": "Scientists made a major medical breakthrough."
+    },
+    {
+        "word": "budget",
+        "meaning": "预算",
+        "sentence": "We need to stick to our travel budget."
+    },
+    {
+        "word": "calculation",
+        "meaning": "计算，估算",
+        "sentence": "The math calculation was correct."
+    },
+    {
+        "word": "capable",
+        "meaning": "有能力的",
+        "sentence": "She is a capable leader."
+    },
+    {
+        "word": "category",
+        "meaning": "种类，类别",
+        "sentence": "This book belongs to the fiction category."
+    },
+    {
+        "word": "channel",
+        "meaning": "频道，渠道，途径，海峡",
+        "sentence": "Please change the TV channel."
+    },
+    {
+        "word": "classic",
+        "meaning": "名著，经典著作；经典的，典型的",
+        "sentence": "This movie is a classic."
+    },
+    {
+        "word": "clinical",
+        "meaning": "临床的，临床诊断的",
+        "sentence": "The drug is undergoing clinical trials."
+    },
+    {
+        "word": "command",
+        "meaning": "命令，指挥",
+        "sentence": "The general gave the command to attack."
+    },
+    {
+        "word": "companion",
+        "meaning": "同伴，伴侣",
+        "sentence": "A dog makes a loyal companion."
+    },
+    {
+        "word": "comparison",
+        "meaning": "比较",
+        "sentence": "Make a comparison between the two models."
+    },
+    {
+        "word": "compromise",
+        "meaning": "妥协，折衷",
+        "sentence": "We reached a compromise after the discussion."
+    },
+    {
+        "word": "conference",
+        "meaning": "会议",
+        "sentence": "He spoke at an international conference."
+    },
+    {
+        "word": "consequence",
+        "meaning": "后果",
+        "sentence": "Every action has a consequence."
+    },
+    {
+        "word": "considerate",
+        "meaning": "体贴的",
+        "sentence": "It was very considerate of you to help."
+    },
+    {
+        "word": "constant",
+        "meaning": "不变的，恒定的",
+        "sentence": "The constant noise is annoying."
+    },
+    {
+        "word": "cruel",
+        "meaning": "残酷的，残忍的",
+        "sentence": "It is cruel to treat animals badly."
+    },
+    {
+        "word": "curiosity",
+        "meaning": "好奇心",
+        "sentence": "Her curiosity led her to explore the cave."
+    },
+    {
+        "word": "curriculum",
+        "meaning": "课程",
+        "sentence": "Math is a core part of the curriculum."
+    },
+    {
+        "word": "defense",
+        "meaning": "防御，保卫",
+        "sentence": "The team has a strong defense."
+    },
+    {
+        "word": "department",
+        "meaning": "部，部门，系",
+        "sentence": "She works in the sales department."
+    },
+    {
+        "word": "dependable",
+        "meaning": "可信赖的；可靠的",
+        "sentence": "He is a dependable friend."
+    },
+    {
+        "word": "determination",
+        "meaning": "决心，决定",
+        "sentence": "She showed great determination to win."
+    },
+    {
+        "word": "dilemma",
+        "meaning": "（进退两难的）困境",
+        "sentence": "I am facing a difficult dilemma."
+    },
+    {
+        "word": "dishonest",
+        "meaning": "不诚实的；骗人的；欺骗性的",
+        "sentence": "He was dishonest about his age."
+    },
+    {
+        "word": "dispose",
+        "meaning": "安排，布置，去除，处理",
+        "sentence": "Please dispose of waste properly."
+    },
+    {
+        "word": "distribute",
+        "meaning": "分发，分配",
+        "sentence": "They distribute food to the homeless."
+    },
+    {
+        "word": "disturb",
+        "meaning": "打扰，妨碍",
+        "sentence": "Do not disturb him while he is sleeping."
+    },
+    {
+        "word": "embrace",
+        "meaning": "拥抱；包括，欣然接受，乐意采纳",
+        "sentence": "She embraced her son warmly."
+    },
+    {
+        "word": "encounter",
+        "meaning": "遭遇，偶遇",
+        "sentence": "We encountered many problems."
+    },
+    {
+        "word": "encouragement",
+        "meaning": "鼓励，激励",
+        "sentence": "Teacher gave me some words of encouragement."
+    },
+    {
+        "word": "enhance",
+        "meaning": "提高，增加，加强",
+        "sentence": "Spices enhance the flavor of the dish."
+    },
+    {
+        "word": "ensure",
+        "meaning": "确保，保证",
+        "sentence": "Please ensure the door is locked."
+    },
+    {
+        "word": "evolution",
+        "meaning": "进化",
+        "sentence": "Human evolution took millions of years."
+    },
+    {
+        "word": "float",
+        "meaning": "浮，漂浮",
+        "sentence": "Wood floats on water."
+    },
+    {
+        "word": "fluid",
+        "meaning": "液体",
+        "sentence": "Drink plenty of fluid when you are sick."
+    },
+    {
+        "word": "format",
+        "meaning": "格式",
+        "sentence": "The file is in PDF format."
+    },
+    {
+        "word": "fortunate",
+        "meaning": "幸运的",
+        "sentence": "I feel very fortunate to have you."
+    },
+    {
+        "word": "foundation",
+        "meaning": "地基，基础",
+        "sentence": "Trust is the foundation of a relationship."
+    },
+    {
+        "word": "fragile",
+        "meaning": "易损坏的",
+        "sentence": "Handle the box with care, it is fragile."
+    },
+    {
+        "word": "frightened",
+        "meaning": "害怕的，受惊吓的",
+        "sentence": "The loud thunder frightened the dog."
+    },
+    {
+        "word": "furniture",
+        "meaning": "家具",
+        "sentence": "We bought some new furniture for the living room."
+    },
+    {
+        "word": "generous",
+        "meaning": "慷慨的，丰富的",
+        "sentence": "He is very generous with his time."
+    },
+    {
+        "word": "gesture",
+        "meaning": "姿势，手势，姿态；作手势",
+        "sentence": "He made a friendly gesture."
+    },
+    {
+        "word": "graduate",
+        "meaning": "毕业生；毕业",
+        "sentence": "She will graduate from university in June."
+    },
+    {
+        "word": "grain",
+        "meaning": "谷物，谷粒",
+        "sentence": "Rice is a staple grain in Asia."
+    },
+    {
+        "word": "grand",
+        "meaning": "宏伟的，壮丽的",
+        "sentence": "The palace is a grand building."
+    },
+    {
+        "word": "guidance",
+        "meaning": "指导，领导",
+        "sentence": "I need your guidance on this matter."
+    },
+    {
+        "word": "identify",
+        "meaning": "认出，识别",
+        "sentence": "Can you identify the thief?"
+    },
+    {
+        "word": "ignore",
+        "meaning": "不理会，忽视",
+        "sentence": "Don't ignore the warning signs."
+    },
+    {
+        "word": "immune",
+        "meaning": "免疫的，有免疫力的，不受影响的",
+        "sentence": "Vaccines make you immune to diseases."
+    },
+    {
+        "word": "implication",
+        "meaning": "暗示",
+        "sentence": "The decision has a serious implication."
+    },
+    {
+        "word": "impression",
+        "meaning": "印象",
+        "sentence": "First impressions are very important."
+    },
+    {
+        "word": "inability",
+        "meaning": "无能",
+        "sentence": "His inability to swim is a problem."
+    },
+    {
+        "word": "incident",
+        "meaning": "小事件，暴力冲突事件",
+        "sentence": "The police reported a minor incident."
+    },
+    {
+        "word": "incorrect",
+        "meaning": "不准确的；不正确的",
+        "sentence": "Your answer is incorrect."
+    },
+    {
+        "word": "initial",
+        "meaning": "最初的，词首的；(姓名的)首字母",
+        "sentence": "My initial reaction was surprise."
+    },
+    {
+        "word": "intensive",
+        "meaning": "密集的，加强的",
+        "sentence": "The course offers intensive training."
+    },
+    {
+        "word": "internal",
+        "meaning": "国内的，内部的",
+        "sentence": "The company has internal conflicts."
+    },
+    {
+        "word": "invasion",
+        "meaning": "入侵；侵犯",
+        "sentence": "The army planned an invasion."
+    },
+    {
+        "word": "irrelevant",
+        "meaning": "无关的",
+        "sentence": "That detail is irrelevant to the story."
+    },
+    {
+        "word": "judgment",
+        "meaning": "判断，判决",
+        "sentence": "Trust your own judgment."
+    },
+    {
+        "word": "knowledgeable",
+        "meaning": "博学的，有见识的",
+        "sentence": "He is knowledgeable about wine."
+    },
+    {
+        "word": "lane",
+        "meaning": "小路",
+        "sentence": "Stay in the right lane."
+    },
+    {
+        "word": "lighten",
+        "meaning": "（使某物）变轻；（使某事物）令人放心，解除忧虑",
+        "sentence": "The news helped to lighten the mood."
+    },
+    {
+        "word": "lung",
+        "meaning": "肺",
+        "sentence": "Smoking damages your lungs."
+    },
+    {
+        "word": "maintain",
+        "meaning": "维持，保持，供养",
+        "sentence": "We must maintain the machine regularly."
+    },
+    {
+        "word": "mass",
+        "meaning": "大量，很多；大批的，广泛的",
+        "sentence": "A mass of people gathered in the square."
+    },
+    {
+        "word": "messy",
+        "meaning": "凌乱的",
+        "sentence": "My room is very messy today."
+    },
+    {
+        "word": "mission",
+        "meaning": "使命",
+        "sentence": "Our mission is to help the poor."
+    },
+    {
+        "word": "mixture",
+        "meaning": "混合，混合物",
+        "sentence": "The drink is a mixture of juice and soda."
+    },
+    {
+        "word": "multimedia",
+        "meaning": "多媒体的",
+        "sentence": "The presentation used multimedia elements."
+    },
+    {
+        "word": "muscle",
+        "meaning": "肌肉",
+        "sentence": "Exercise helps build muscle."
+    },
+    {
+        "word": "nutrition",
+        "meaning": "营养",
+        "sentence": "Good nutrition is essential for health."
+    },
+    {
+        "word": "occasion",
+        "meaning": "场合",
+        "sentence": "We dress up for special occasions."
+    },
+    {
+        "word": "original",
+        "meaning": "原本的，独创的",
+        "sentence": "The original plan was better."
+    },
+    {
+        "word": "passion",
+        "meaning": "激情，热情",
+        "sentence": "He has a passion for cooking."
+    },
+    {
+        "word": "passionate",
+        "meaning": "充满激情的",
+        "sentence": "She is a passionate writer."
+    },
+    {
+        "word": "perspective",
+        "meaning": "角度，观点，想法",
+        "sentence": "Try to see it from my perspective."
+    },
+    {
+        "word": "phenomenon",
+        "meaning": "现象",
+        "sentence": "The Northern Lights are a natural phenomenon."
+    },
+    {
+        "word": "plain",
+        "meaning": "平原；清楚的，平常的，直率的；显然地",
+        "sentence": "She wore a plain white dress."
+    },
+    {
+        "word": "plate",
+        "meaning": "盘子，碟，薄板",
+        "sentence": "He put the food on a plate."
+    },
+    {
+        "word": "poisonous",
+        "meaning": "有毒的",
+        "sentence": "Some mushrooms are poisonous."
+    },
+    {
+        "word": "precious",
+        "meaning": "珍贵的",
+        "sentence": "Time is our most precious resource."
+    },
+    {
+        "word": "promote",
+        "meaning": "促进，晋升，促销",
+        "sentence": "The company will promote him soon."
+    },
+    {
+        "word": "rebuild",
+        "meaning": "重建",
+        "sentence": "They plan to rebuild the house."
+    },
+    {
+        "word": "recreate",
+        "meaning": "再现；再创造",
+        "sentence": "We tried to recreate the scene."
+    },
+    {
+        "word": "reflect",
+        "meaning": "反射，反映，反思",
+        "sentence": "The mirror reflects the light."
+    },
+    {
+        "word": "relation",
+        "meaning": "关系",
+        "sentence": "There is a relation between diet and health."
+    },
+    {
+        "word": "relevant",
+        "meaning": "相关的",
+        "sentence": "Please keep your comments relevant."
+    },
+    {
+        "word": "relief",
+        "meaning": "减轻，宽慰，轻松，解脱",
+        "sentence": "It was a relief to hear the good news."
+    },
+    {
+        "word": "resistant",
+        "meaning": "有抵抗力的，抵抗的；顽固的",
+        "sentence": "This watch is water resistant."
+    },
+    {
+        "word": "route",
+        "meaning": "路线",
+        "sentence": "We took the scenic route home."
+    },
+    {
+        "word": "sample",
+        "meaning": "样本，例子",
+        "sentence": "Would you like to sample the cheese?"
+    },
+    {
+        "word": "selfish",
+        "meaning": "自私的",
+        "sentence": "Don't be selfish with your toys."
+    },
+    {
+        "word": "slip",
+        "meaning": "滑倒，滑落",
+        "sentence": "Be careful not to slip on the ice."
+    },
+    {
+        "word": "snack",
+        "meaning": "小吃；点心",
+        "sentence": "I usually have a snack at 3 PM."
+    },
+    {
+        "word": "solar",
+        "meaning": "太阳的，太阳能的",
+        "sentence": "We installed solar energy panels."
+    },
+    {
+        "word": "spiritual",
+        "meaning": "精神上的，心灵的",
+        "sentence": "Yoga is a spiritual practice for her."
+    },
+    {
+        "word": "stimulate",
+        "meaning": "刺激，激发",
+        "sentence": "Coffee helps to stimulate the brain."
+    },
+    {
+        "word": "summarize",
+        "meaning": "总结",
+        "sentence": "Can you summarize the story?"
+    },
+    {
+        "word": "talented",
+        "meaning": "有才能的，有才干的",
+        "sentence": "She is a talented musician."
+    },
+    {
+        "word": "tease",
+        "meaning": "取笑，逗弄",
+        "sentence": "It is not nice to tease others."
+    },
+    {
+        "word": "tension",
+        "meaning": "（情况、心情）紧张",
+        "sentence": "There was tension in the room."
+    },
+    {
+        "word": "thoughtful",
+        "meaning": "深思熟虑的，体贴的",
+        "sentence": "That was a very thoughtful gift."
+    }
+];
+
+        // Web Speech API 语音合成
+        const synth = window.speechSynthesis;
+        let voices = [];
+
+        // 初始化语音合成
+        function initSpeech() {
+            voices = synth.getVoices();
+            if (voices.length === 0) {
+                synth.onvoiceschanged = function() {
+                    voices = synth.getVoices();
+                };
+            }
+        }
+
+        // 初始化应用
+        function init() {
+            loadData();
+            updateStats();
+            updateProgress();
+            checkStudyStreak();
+            if (!initEnhancedSpeech()) {
+                console.warn('语音合成功能初始化失败，将使用基本发音功能');
+                initSpeech(); // 回退到基本发音功能
+            }
+            setupCardClick();
+        }
+
+        // 从本地存储加载数据
+        function loadData() {
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            const isInitialized = localStorage.getItem(INITIALIZED_KEY);
+
+            if (savedData && isInitialized) {
+                // 已初始化过，从本地存储读取
+                vocabulary = JSON.parse(savedData);
+            } else {
+                // 首次加载，使用初始中考单词数据
+                vocabulary = INITIAL_VOCABULARY.map(word => ({
+                    word: word.word,
+                    meaning: word.meaning,
+                    sentence: word.sentence,
+                    nextReview: new Date().toISOString(),
+                    interval: 1,
+                    ease: 2.5,
+                    reviews: 0,
+                    lastReviewed: null,
+                    mastered: false
+                }));
+
+                // 标记为已初始化并保存
+                localStorage.setItem(INITIALIZED_KEY, 'true');
+                saveData();
+                showToast(`✅ 已加载 ${vocabulary.length} 个中考单词！`, 'success');
+            }
+        }
+
+        // 保存数据到本地存储
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(vocabulary));
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            const totalWords = vocabulary.length;
+            const dueWords = getDueWords().length;
+            const masteredWords = vocabulary.filter(word => word.mastered).length;
+            const streak = parseInt(localStorage.getItem(STREAK_KEY) || 0);
+
+            document.getElementById('totalWords').textContent = totalWords;
+            document.getElementById('dueWords').textContent = dueWords;
+            document.getElementById('masteredWords').textContent = masteredWords;
+            document.getElementById('studyStreak').textContent = streak;
+        }
+
+        // 获取今日需要复习的单词
+        function getDueWords() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            return vocabulary.filter(word => {
+                const nextReviewDate = new Date(word.nextReview);
+                return nextReviewDate <= today || word.lastReviewed === null;
+            });
+        }
+
+        // 开始学习
+        function startLearning() {
+            const dueWords = getDueWords();
+            if (dueWords.length === 0) {
+                showToast('🎉 今日复习已完成！可以休息一下啦~', 'success');
+                return;
+            }
+
+            // 进入学习模式
+            document.querySelector('.container').classList.add('study-mode');
+
+            currentWordIndex = 0;
+            todayReviewed = 0;
+            showWord(dueWords[currentWordIndex]);
+            updateProgress();
+
+            // 滚动到页面顶部
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        // 初始化页面点击事件
+        function setupCardClick() {
+            const studyCard = document.getElementById('studyCard');
+            studyCard.onclick = function(e) {
+                // 只在未开始学习且不是点击发音按钮时触发
+                if (currentWordIndex === -1 && !e.target.closest('.pronounce-btn')) {
+                    startLearning();
+                }
+            };
+        }
+
+        // 显示单词
+        function showWord(word) {
+            currentWord = word;
+
+            const wordDisplay = document.getElementById('wordDisplay');
+            const wordText = document.getElementById('wordText');
+            const meaningDisplay = document.getElementById('meaningDisplay');
+            const sentenceDisplay = document.getElementById('sentenceDisplay');
+            const sentenceText = document.getElementById('sentenceText');
+            const sentencePronounceBtn = document.getElementById('sentencePronounceBtn');
+
+            wordText.textContent = word.word;
+            meaningDisplay.textContent = word.meaning;
+            sentenceText.textContent = word.sentence || '';
+
+            // 清空发音按钮（如果有）
+            while (wordDisplay.children.length > 1) {
+                wordDisplay.removeChild(wordDisplay.lastChild);
+            }
+
+            meaningDisplay.classList.add('hidden');
+            sentenceDisplay.classList.add('hidden');
+
+            // 点击单词播放发音
+            wordText.onclick = function(e) {
+                e.stopPropagation();
+                pronounceWord();
+            };
+
+            // 点击卡片显示释义和例句
+            wordDisplay.onclick = function(e) {
+                if (e.target === wordDisplay) {
+                    meaningDisplay.classList.remove('hidden');
+                    if (word.sentence) {
+                        sentenceDisplay.classList.remove('hidden');
+                    }
+                }
+            };
+
+            // 移除之前的卡片点击事件，避免重复绑定
+            const studyCard = document.getElementById('studyCard');
+            studyCard.onclick = function(e) {
+                // 点击卡片（非按钮区域）显示释义和例句
+                if (!e.target.closest('.button-group') && !e.target.closest('.pronounce-btn')) {
+                    meaningDisplay.classList.remove('hidden');
+                    if (word.sentence) {
+                        sentenceDisplay.classList.remove('hidden');
+                    }
+                }
+            };
+
+            // 为中文释义添加发音功能
+            meaningDisplay.onclick = function(e) {
+                if (e.target === meaningDisplay) {
+                    pronounceMeaning();
+                }
+            };
+
+            // 为例句添加发音功能
+            sentenceDisplay.onclick = function(e) {
+                e.stopPropagation();
+                pronounceSentence();
+            };
+
+            // 自动播放单词发音
+            setTimeout(() => {
+                pronounceWord();
+            }, 300);
+        }
+
+        // 退出学习模式
+        function exitStudyMode() {
+            document.querySelector('.container').classList.remove('study-mode');
+            currentWordIndex = -1;
+            // 恢复点击开始学习的状态
+            document.getElementById('wordText').textContent = '点击卡片开始学习';
+            // 隐藏释义和例句
+            document.getElementById('meaningDisplay').classList.add('hidden');
+            document.getElementById('sentenceDisplay').classList.add('hidden');
+            
+            // 清除之前的特定元素点击事件，防止阻挡冒泡
+            document.getElementById('wordText').onclick = null;
+            document.getElementById('wordDisplay').onclick = null;
+            
+            // 重新绑定开始学习的点击事件
+            setupCardClick();
+        }
+
+        // 评分单词并更新间隔
+        function rateWord(quality) {
+            if (currentWordIndex < 0) {
+                showToast('请先点击卡片开始学习！', 'info');
+                return;
+            }
+
+            const dueWords = getDueWords();
+            if (currentWordIndex >= dueWords.length) {
+                showToast('🎉 今日复习已完成！', 'success');
+                // 退出学习模式
+                exitStudyMode();
+                updateStats();
+                return;
+            }
+
+            const word = dueWords[currentWordIndex];
+            updateInterval(word, quality);
+
+            todayReviewed++;
+            currentWordIndex++;
+
+            if (currentWordIndex < dueWords.length) {
+                showWord(dueWords[currentWordIndex]);
+            } else {
+                showToast('🎉 今日复习已完成！', 'success');
+                currentWordIndex = -1;
+                // 退出学习模式
+                exitStudyMode();
+            }
+
+            saveData();
+            updateStats();
+            updateProgress();
+            updateStudyStreak();
+        }
+
+        // 更新间隔重复算法（基于 SuperMemo-2 算法改进）
+        function updateInterval(word, quality) {
+            const now = new Date();
+            const qualityMap = {10: 5, 5: 4, 2: 3, 0: 2}; // 映射到标准的1-5质量评分
+            const q = qualityMap[quality] || 3;
+
+            if (q >= 3) {
+                // 记得不错（质量评分≥3）
+                if (word.reviews === 0) {
+                    word.interval = 1;
+                    word.ease = 2.5;
+                } else if (word.reviews === 1) {
+                    word.interval = 6;
+                } else {
+                    // 基于上次间隔和轻松因子计算新间隔
+                    word.interval = Math.round(word.interval * word.ease);
+                }
+
+                // 更新轻松因子（SuperMemo-2公式）
+                word.ease = word.ease + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
+                word.ease = Math.max(1.3, Math.min(2.5, word.ease)); // 限制在合理范围内
+
+                // 如果质量≥4且复习次数≥5，标记为已掌握
+                word.mastered = word.reviews >= 5 && q >= 4;
+            } else {
+                // 记得不好（质量评分≤2）
+                word.interval = 1;
+                word.ease = Math.max(1.3, word.ease - 0.2);
+                word.mastered = false;
+            }
+
+            word.reviews++;
+            word.lastReviewed = now.toISOString();
+            word.lastQuality = q; // 记录本次质量评分
+
+            // 调整间隔以避免过长（对于间隔超过30天的进行调整）
+            if (word.interval > 30 && q < 4) {
+                word.interval = Math.round(word.interval * 0.8);
+            }
+
+            // 设置下次复习日期
+            const nextReviewDate = new Date(now);
+            nextReviewDate.setDate(nextReviewDate.getDate() + word.interval);
+            word.nextReview = nextReviewDate.toISOString();
+
+            // 如果单词已被掌握，延长其间隔（但仍然需要偶尔复习）
+            if (word.mastered) {
+                word.interval = Math.max(word.interval, 30); // 至少30天
+            }
+        }
+
+        // 更新进度条
+        function updateProgress() {
+            const dueWords = getDueWords();
+            const progress = dueWords.length > 0 ? (todayReviewed / dueWords.length) * 100 : 0;
+            document.getElementById('progressFill').style.width = progress + '%';
+            // 更新进度文本
+            document.getElementById('progressText').textContent = todayReviewed + '/' + dueWords.length;
+        }
+
+        // 切换导入区域显示
+        function toggleImportSection() {
+            const importSection = document.getElementById('importSection');
+            importSection.style.display = importSection.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // 处理文件上传
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('importText').value = e.target.result;
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // 导入单词
+        function importWords() {
+            const text = document.getElementById('importText').value.trim();
+            if (!text) {
+                showToast('请输入要导入的单词内容！', 'error');
+                return;
+            }
+
+            // 如果本地已有数据，提示用户是否清空
+            if (vocabulary.length > 0) {
+                const confirmMessage = `当前已有 ${vocabulary.length} 个单词。\n\n是否清空现有数据后再导入？\n\n点击"确定"将清空现有数据\n点击"取消"将保留现有数据并追加新单词`;
+
+                const shouldClear = confirm(confirmMessage);
+
+                if (shouldClear) {
+                    vocabulary = [];
+                    showToast('已清空现有数据', 'info');
+                }
+            }
+
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            const importedWords = [];
+
+            lines.forEach(line => {
+                const parts = line.split('|');
+                const mainPart = parts[0].trim();
+                const sentencePart = parts[1] ? parts[1].trim() : '';
+
+                const wordParts = mainPart.split(/\s+/);
+                if (wordParts.length >= 2) {
+                    const word = wordParts[0].trim();
+                    const meaning = wordParts.slice(1).join(' ').trim();
+
+                    // 检查是否已存在
+                    const exists = vocabulary.some(v => v.word.toLowerCase() === word.toLowerCase());
+                    if (!exists) {
+                        importedWords.push({
+                            word: word,
+                            meaning: meaning,
+                            sentence: sentencePart,
+                            nextReview: new Date().toISOString(),
+                            interval: 1,
+                            ease: 2.5,
+                            reviews: 0,
+                            lastReviewed: null,
+                            mastered: false
+                        });
+                    }
+                }
+            });
+
+            if (importedWords.length > 0) {
+                vocabulary = [...vocabulary, ...importedWords];
+                saveData();
+                updateStats();
+                showToast(`✅ 成功导入 ${importedWords.length} 个单词！`, 'success');
+                document.getElementById('importText').value = '';
+                toggleImportSection(); // 导入后自动关闭导入区域
+            } else {
+                showToast('没有找到可导入的单词，或者所有单词已存在！', 'info');
+            }
+        }
+
+        // 发音函数
+        function pronounceWord() {
+            if (!currentWord) return;
+
+            const utterance = new SpeechSynthesisUtterance(currentWord.word);
+
+            // 尝试找到英语语音
+            const englishVoice = voices.find(voice =>
+                voice.lang.startsWith('en-') && !voice.name.includes('Chinese')
+            );
+
+            if (englishVoice) {
+                utterance.voice = englishVoice;
+            }
+
+            utterance.rate = 0.8;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            synth.speak(utterance);
+        }
+
+        // 例句发音函数
+        function pronounceSentence() {
+            if (!currentWord || !currentWord.sentence) return;
+
+            const utterance = new SpeechSynthesisUtterance(currentWord.sentence);
+
+            // 尝试找到英语语音
+            const englishVoice = voices.find(voice =>
+                voice.lang.startsWith('en-') && !voice.name.includes('Chinese')
+            );
+
+            if (englishVoice) {
+                utterance.voice = englishVoice;
+            }
+
+            utterance.rate = 0.9;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            synth.speak(utterance);
+        }
+
+        // 增强语音合成功能
+        let speechQueue = [];
+        let isSpeaking = false;
+
+        // 中文发音函数
+        function pronounceMeaning() {
+            if (!currentWord) return;
+            speakEnhanced(currentWord.meaning, currentWord.word, 'zh');
+        }
+
+        // 发音函数增强版
+        function pronounceWord() {
+            if (!currentWord) return;
+            speakEnhanced(currentWord.word, '', 'en');
+        }
+
+        // 例句发音函数增强版
+        function pronounceSentence() {
+            if (!currentWord || !currentWord.sentence) return;
+            speakEnhanced(currentWord.sentence, currentWord.word, 'en');
+        }
+
+        // 增强的发音功能
+        function speakEnhanced(text, context, lang) {
+            // 如果正在发音，强制停止
+            if (synth.speaking || isSpeaking) {
+                synth.cancel();
+                isSpeaking = false;
+                // 清空队列
+                speechQueue = [];
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+
+            // 根据语言选择语音
+            let selectedVoice;
+            if (lang === 'en') {
+                // 优先选择英式英语，其次美式英语，最后其他英语
+                selectedVoice = voices.find(voice => voice.name.includes('British'));
+                if (!selectedVoice) {
+                    selectedVoice = voices.find(voice => voice.name.includes('American'));
+                }
+                if (!selectedVoice) {
+                    selectedVoice = voices.find(voice =>
+                        voice.lang.startsWith('en-') && !voice.name.includes('Chinese')
+                    );
+                }
+            } else if (lang === 'zh') {
+                // 优先选择普通话，然后其他中文
+                selectedVoice = voices.find(voice => voice.name.includes('Ting-Ting') || voice.name.includes('Sin-Ji'));
+                if (!selectedVoice) {
+                    selectedVoice = voices.find(voice =>
+                        voice.lang.startsWith('zh-') || voice.name.includes('Chinese')
+                    );
+                }
+            }
+
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+
+            // 根据内容和语言调整发音参数
+            if (lang === 'en') {
+                utterance.rate = 0.85;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+            } else if (lang === 'zh') {
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+            }
+
+            // 添加发音控制
+            utterance.onstart = function() {
+                isSpeaking = true;
+            };
+
+            utterance.onend = function() {
+                isSpeaking = false;
+                // 处理发音队列
+                if (speechQueue.length > 0) {
+                    const nextSpeech = speechQueue.shift();
+                    setTimeout(() => speakEnhanced(nextSpeech.text, nextSpeech.context, nextSpeech.lang), 200);
+                }
+            };
+
+            utterance.onerror = function(event) {
+                isSpeaking = false;
+                // 忽略因取消引起的方法
+                if (event.error === 'interrupted' || event.error === 'canceled') {
+                    console.log('发音被中断');
+                    return;
+                }
+                console.error('发音出错:', event);
+                showToast(`无法发音: ${text}`, 'error');
+            };
+
+            // 如果是单词发音，可以尝试先发英文再发中文（可以注释掉）
+            if (context && text === context && lang === 'en') {
+                // 可选：连续发音英文和中文
+                // speechQueue.push({text: currentWord.meaning, context: '', lang: 'zh'});
+            }
+
+            // 稍微延迟一点播放，确保cancel生效
+            setTimeout(() => {
+                synth.speak(utterance);
+            }, 50);
+        }
+
+        // 停止所有发音
+        function stopSpeech() {
+            if (synth.speaking) {
+                synth.cancel();
+                isSpeaking = false;
+                speechQueue = [];
+            }
+        }
+
+        // 应用启动时初始化语音功能
+        function initEnhancedSpeech() {
+            if (!synth) {
+                console.warn('浏览器不支持语音合成功能');
+                return false;
+            }
+
+            voices = synth.getVoices();
+            if (voices.length === 0) {
+                synth.onvoiceschanged = function() {
+                    voices = synth.getVoices();
+                    console.log(`已加载 ${voices.length} 个语音`);
+                };
+            } else {
+                console.log(`已加载 ${voices.length} 个语音`);
+            }
+            return true;
+        }
+
+        // 添加单个单词
+        function addWord() {
+            const word = prompt('请输入单词：');
+            if (!word) return;
+
+            const meaning = prompt('请输入中文释义：');
+            if (!meaning) return;
+
+            const sentence = prompt('请输入例句（可选）：');
+
+            // 检查是否已存在
+            const exists = vocabulary.some(v => v.word.toLowerCase() === word.toLowerCase());
+            if (exists) {
+                showToast('这个单词已经存在了！', 'info');
+                return;
+            }
+
+            vocabulary.push({
+                word: word,
+                meaning: meaning,
+                sentence: sentence || '',
+                nextReview: new Date().toISOString(),
+                interval: 1,
+                ease: 2.5,
+                reviews: 0,
+                lastReviewed: null,
+                mastered: false
+            });
+
+            saveData();
+            updateStats();
+            showToast('✅ 单词添加成功！', 'success');
+        }
+
+        // 重置进度
+        function resetProgress() {
+            if (confirm('⚠️ 确定要重置所有学习进度吗？此操作不可恢复！')) {
+                vocabulary.forEach(word => {
+                    word.nextReview = new Date().toISOString();
+                    word.interval = 1;
+                    word.ease = 2.5;
+                    word.reviews = 0;
+                    word.lastReviewed = null;
+                    word.mastered = false;
+                });
+
+                localStorage.removeItem(STREAK_KEY);
+                saveData();
+                updateStats();
+                showToast('🔄 学习进度已重置！', 'success');
+            }
+        }
+
+        // 更新学习天数
+        function updateStudyStreak() {
+            const today = new Date().toDateString();
+            const lastStudyDate = localStorage.getItem('lastStudyDate');
+
+            if (lastStudyDate !== today) {
+                let streak = parseInt(localStorage.getItem(STREAK_KEY) || 0);
+
+                // 检查是否连续
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+
+                if (lastStudyDate === yesterday.toDateString()) {
+                    streak++;
+                } else if (lastStudyDate !== today) {
+                    streak = 1;
+                }
+
+                localStorage.setItem(STREAK_KEY, streak);
+                localStorage.setItem('lastStudyDate', today);
+                updateStats();
+            }
+        }
+
+        // 检查学习天数
+        function checkStudyStreak() {
+            const today = new Date().toDateString();
+            const lastStudyDate = localStorage.getItem('lastStudyDate');
+
+            if (lastStudyDate !== today) {
+                // 不是连续学习，不增加天数
+            }
+        }
+
+        // 导出单词到文件
+        function exportWords() {
+            if (vocabulary.length === 0) {
+                showToast('没有可导出的单词！', 'error');
+                return;
+            }
+
+            // 生成导出内容
+            let exportText = '';
+            vocabulary.forEach(word => {
+                if (word.sentence) {
+                    exportText += `${word.word} ${word.meaning} | ${word.sentence}\n`;
+                } else {
+                    exportText += `${word.word} ${word.meaning}\n`;
+                }
+            });
+
+            // 创建下载链接
+            const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `vocabulary_${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast(`✅ 已导出 ${vocabulary.length} 个单词！`, 'success');
+        }
+
+        // 清空导入文本框
+        function clearImportText() {
+            document.getElementById('importText').value = '';
+            showToast('已清空输入内容', 'info');
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
